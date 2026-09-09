@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSX Screener — Cheetah Ranking Terminal</title>
+<style>
+/* ============================================================
+   THEME TOKENS
+   ============================================================ */
+:root{
+  --bg:#0A0D12; --bg-elevated:#0F131A; --surface:#131922; --surface-hover:#1A212C;
+  --border:#1F2733; --border-strong:#2B3646;
+  --text:#E7ECF2; --text-muted:#8492A6; --text-faint:#54606F;
+  --green:#35C98C; --green-dim:#1E4A3A;
+  --red:#EF5F72; --red-dim:#4A2230;
+  --gold:#EFB94B; --gold-dim:#4A3B1E;
+  --blue:#5B93F5; --blue-dim:#1E2E4A;
+  --purple:#9B87F5;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono","Cascadia Code","Roboto Mono",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --radius:6px;
+  --shadow:0 8px 24px rgba(0,0,0,.35);
+}
+html[data-theme="light"]{
+  --bg:#F3F5F8; --bg-elevated:#FFFFFF; --surface:#FFFFFF; --surface-hover:#EEF1F6;
+  --border:#DFE4EC; --border-strong:#C6CEDA;
+  --text:#141A22; --text-muted:#5A6373; --text-faint:#8B93A2;
+  --green:#0E9A62; --green-dim:#D8F3E8;
+  --red:#D93A52; --red-dim:#FBDDE2;
+  --gold:#B4790A; --gold-dim:#FBEACB;
+  --blue:#2563EB; --blue-dim:#DCE7FD;
+  --shadow:0 8px 24px rgba(20,26,34,.12);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--sans);
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--blue-dim);}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit;}
+a{color:inherit;}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+.hidden{display:none !important;}
+.up{color:var(--green);}
+.down{color:var(--red);}
+.flat{color:var(--text-muted);}
+
+/* ---------- layout shells ---------- */
+#app{min-height:100vh;display:flex;flex-direction:column;}
+.topnav{
+  display:flex;align-items:center;gap:4px;padding:0 16px;height:52px;
+  background:var(--bg-elevated);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:40;overflow-x:auto;
+}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.2px;margin-right:18px;white-space:nowrap;}
+.brand .mark{width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,var(--green),var(--blue));display:inline-block;flex:none;}
+.navtabs{display:flex;gap:2px;flex:1;overflow-x:auto;}
+.navtab{
+  padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--text-muted);
+  font-size:13px;font-weight:500;white-space:nowrap;border:1px solid transparent;
+}
+.navtab:hover{background:var(--surface-hover);color:var(--text);}
+.navtab.active{background:var(--surface);color:var(--text);border-color:var(--border);}
+.navright{display:flex;align-items:center;gap:8px;margin-left:8px;}
+.icon-btn{
+  width:32px;height:32px;border-radius:6px;background:transparent;border:1px solid var(--border);
+  color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:hover{background:var(--surface-hover);color:var(--text);}
+
+.configbar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:8px 16px;
+  background:var(--bg-elevated);border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);
+}
+.configbar .dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);display:inline-block;margin-right:5px;}
+.configbar .dot.ok{background:var(--green);}
+.configbar .dot.warn{background:var(--gold);}
+.spacer{flex:1;}
+.btn{
+  padding:7px 12px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);
+  color:var(--text);cursor:pointer;font-weight:600;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{background:var(--surface-hover);}
+.btn.primary{background:var(--green);border-color:var(--green);color:#08150F;}
+.btn.primary:hover{filter:brightness(1.08);}
+.btn.ghost{background:transparent;}
+.btn.small{padding:5px 9px;font-size:11.5px;}
+
+main{flex:1;padding:18px 16px 60px;max-width:1560px;width:100%;margin:0 auto;}
+
+/* ---------- cards / dashboard ---------- */
+.grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px 14px;
+}
+.stat-card .label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;}
+.stat-card .value{font-size:22px;font-weight:700;font-family:var(--mono);}
+.stat-card .sub{font-size:11px;color:var(--text-faint);margin-top:3px;}
+
+.panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px;margin-bottom:16px;
+}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.panel-title{font-size:13px;font-weight:700;letter-spacing:.2px;}
+.panel-title .n{color:var(--text-muted);font-weight:500;margin-left:6px;}
+
+.grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid-5col{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+@media(max-width:1100px){.grid-2col,.grid-5col{grid-template-columns:1fr 1fr;}}
+@media(max-width:640px){.grid-2col,.grid-5col{grid-template-columns:1fr;}}
+
+.mini-row{display:flex;align-items:center;justify-content:space-between;padding:7px 4px;border-bottom:1px solid var(--border);font-size:12.5px;}
+.mini-row:last-child{border-bottom:none;}
+.mini-row .sym{font-weight:700;font-family:var(--mono);}
+.mini-row .co{color:var(--text-muted);font-size:11px;}
+
+.badge{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;
+  font-size:11px;font-weight:700;font-family:var(--mono);
+}
+.badge.cheetah{background:var(--gold-dim);color:var(--gold);}
+.badge.strong{background:var(--green-dim);color:var(--green);}
+.badge.good{background:#3a3418;color:#E0C15A;}
+html[data-theme="light"] .badge.good{background:#FFF3CE;color:#8A6A00;}
+.badge.watch{background:#4a3218;color:#E0954F;}
+html[data-theme="light"] .badge.watch{background:#FEE6CE;color:#A0530A;}
+.badge.weak{background:var(--red-dim);color:var(--red);}
+.badge.incomplete{background:var(--surface-hover);color:var(--text-faint);border:1px dashed var(--border-strong);}
+
+/* ---------- table ---------- */
+.table-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
+.search-box{
+  display:flex;align-items:center;gap:6px;background:var(--bg-elevated);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;min-width:220px;flex:1;max-width:320px;
+}
+.search-box input{background:transparent;border:none;outline:none;color:var(--text);width:100%;font-size:13px;}
+select.sel, input.field{
+  background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;color:var(--text);
+  padding:6px 9px;font-size:12.5px;
+}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+table.datatable{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1100px;}
+table.datatable thead th{
+  position:sticky;top:0;background:var(--bg-elevated);text-align:left;padding:9px 10px;
+  border-bottom:1px solid var(--border-strong);color:var(--text-muted);font-weight:600;
+  white-space:nowrap;cursor:pointer;user-select:none;font-size:11.5px;letter-spacing:.2px;
+}
+table.datatable thead th:hover{color:var(--text);}
+table.datatable thead th .arrow{opacity:.5;font-size:10px;margin-left:3px;}
+table.datatable tbody td{padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono);}
+table.datatable tbody tr{cursor:pointer;}
+table.datatable tbody tr:hover{background:var(--surface-hover);}
+table.datatable tbody td.txt{font-family:var(--sans);}
+.na{color:var(--text-faint);}
+.pagination{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:10px;font-size:12px;color:var(--text-muted);}
+
+/* ---------- filter panel (slide over) ---------- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;}
+.slideover{
+  position:fixed;top:0;right:0;height:100%;width:380px;max-width:92vw;background:var(--bg-elevated);
+  border-left:1px solid var(--border);z-index:61;overflow-y:auto;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;
+}
+.slideover .so-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+.slideover .so-body{padding:14px 16px;flex:1;overflow-y:auto;}
+.slideover .so-foot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;}
+.filter-group{margin-bottom:16px;}
+.filter-group h4{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:0 0 8px;}
+.range-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.range-row label{flex:1;font-size:12.5px;color:var(--text);}
+.range-row input{width:64px;padding:5px 6px;font-size:12px;}
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12.5px;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{padding:5px 10px;border-radius:99px;border:1px solid var(--border-strong);font-size:11.5px;cursor:pointer;background:var(--surface);}
+.chip.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+.preset-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+
+/* modal (import / detail) */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow);}
+.modal .m-head{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid var(--border);}
+.modal .m-body{padding:16px;}
+.modal .m-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.dropzone{border:1.5px dashed var(--border-strong);border-radius:8px;padding:26px;text-align:center;color:var(--text-muted);cursor:pointer;}
+.dropzone:hover{background:var(--surface-hover);}
+.map-table{width:100%;font-size:12px;border-collapse:collapse;margin-top:10px;}
+.map-table td{padding:5px 6px;border-bottom:1px solid var(--border);}
+
+/* stock detail (large modal) */
+.detail-modal{max-width:920px;}
+.detail-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;}
+.detail-hero .px{font-size:30px;font-weight:700;font-family:var(--mono);}
+.tabs-row{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:14px 0;overflow-x:auto;}
+.tabs-row .t{padding:8px 12px;font-size:12.5px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.tabs-row .t.active{color:var(--text);border-color:var(--blue);}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.kv{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:9px 10px;}
+.kv .k{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;}
+.kv .v{font-family:var(--mono);font-weight:700;font-size:14px;margin-top:2px;}
+.reason-list{list-style:none;padding:0;margin:0;}
+.reason-list li{padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px;display:flex;gap:8px;}
+.reason-list li:last-child{border:none;}
+.chart-range{display:flex;gap:4px;margin:8px 0;}
+canvas.chart{width:100%;height:180px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}
+
+/* empty state */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted);}
+.empty-state .big{font-size:38px;margin-bottom:10px;}
+.empty-state h3{color:var(--text);margin:6px 0;}
+
+footer.tiny{padding:14px 16px;color:var(--text-faint);font-size:11px;text-align:center;}
+.tooltip-wrap{position:relative;display:inline-block;}
+.tooltip-wrap .tip{
+  display:none;position:absolute;bottom:130%;left:50%;transform:translateX(-50%);
+  background:#000;color:#fff;padding:5px 8px;border-radius:5px;font-size:11px;white-space:nowrap;z-index:5;
+}
+.tooltip-wrap:hover .tip{display:block;}
+.flagbar{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+.flag-pill{background:var(--red-dim);color:var(--red);padding:4px 9px;border-radius:99px;font-size:11px;font-weight:600;}
+.section-note{font-size:12px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);padding:10px 12px;border-radius:6px;margin-bottom:14px;}
+.code-block{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:12px;overflow-x:auto;white-space:pre;color:var(--text-muted);}
+.settings-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.settings-table th,.settings-table td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);}
+.settings-table th{color:var(--text-muted);font-size:11px;text-transform:uppercase;}
+label.small-label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;}
+.inline-inputs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============= TOP NAV ============= -->
+  <div class="topnav">
+    <div class="brand"><span class="mark"></span>PSX SCREENER</div>
+    <div class="navtabs" id="navtabs">
+      <div class="navtab" data-view="dashboard">Dashboard</div>
+      <div class="navtab" data-view="stocks">Stocks</div>
+      <div class="navtab" data-view="cheetah">Cheetah</div>
+      <div class="navtab" data-view="growth">Growth</div>
+      <div class="navtab" data-view="value">Value</div>
+      <div class="navtab" data-view="dividend">Dividend</div>
+      <div class="navtab" data-view="momentum">Momentum</div>
+      <div class="navtab" data-view="settings">Settings</div>
+    </div>
+    <div class="navright">
+      <button class="icon-btn" id="themeToggle" title="Toggle theme">◐</button>
+    </div>
+  </div>
+
+  <!-- ============= CONFIG / STATUS BAR ============= -->
+  <div class="configbar">
+    <span><span class="dot" id="dataDot"></span><span id="dataStatusText">No data loaded</span></span>
+    <span>Source: <b id="dataSourceLabel" class="mono">—</b></span>
+    <span>Stocks: <b id="dataCountLabel" class="mono">0</b></span>
+    <span>Updated: <b id="dataUpdatedLabel" class="mono">—</b></span>
+    <span>Missing fields: <b id="dataMissingLabel" class="mono">0</b></span>
+    <div class="spacer"></div>
+    <button class="btn small" id="btnImport">⤓ Import Data</button>
+    <button class="btn small" id="btnLiveFetch">⟳ Fetch Live (configure)</button>
+    <button class="btn small" id="btnExportCsv">⤒ Export CSV</button>
+  </div>
+
+  <main>
+
+    <!-- ============= DASHBOARD VIEW ============= -->
+    <section id="view-dashboard">
+      <div class="grid-stats" id="dashStats"></div>
+      <div class="grid-2col">
+        <div class="panel"><div class="panel-head"><div class="panel-title">🔥 Top 10 Cheetah Stocks</div></div><div id="topCheetah"></div></div>
+        <div class="panel"><div class="panel-head"><div class="panel-title">📈 Top Growth Stocks</div></div><div id="topGrowth"></div></div>
+      </div>
+      <div class="grid-2col" style="margin-top:14px;">
+        <div class="panel"><div class="panel-head"><div class="panel-title">💰 Top Value Stocks</div></div><div id="topValue"></div></div>
+        <div class="panel"><div class="panel-head"><div class="panel-title">💵 Top Dividend Stocks</div></div><div id="topDividend"></div></div>
+      </div>
+      <div class="panel" style="margin-top:14px;"><div class="panel-head"><div class="panel-title">🚀 Top Momentum Stocks</div></div><div id="topMomentum"></div></div>
+    </section>
+
+    <!-- ============= STOCKS TABLE VIEW (reused for cheetah/growth/value/dividend/momentum) ============= -->
+    <section id="view-stocks" class="hidden">
+      <div class="table-toolbar">
+        <div class="search-box">🔎<input id="searchInput" placeholder="Search symbol or company…"></div>
+        <select class="sel" id="sectorFilter"><option value="">All Sectors</option></select>
+        <button class="btn small" id="btnOpenFilters">⚙ Filters <span id="activeFilterCount"></span></button>
+        <button class="btn small" id="btnColumns">☰ Columns</button>
+        <button class="btn small ghost" id="btnResetFilters">Reset</button>
+        <div class="spacer"></div>
+        <span class="mono" id="rowCountLabel" style="color:var(--text-muted);font-size:12px;"></span>
+      </div>
+      <div id="stocksEmptyState" class="empty-state hidden">
+        <div class="big">📭</div>
+        <h3>No data loaded yet</h3>
+        <div>Import a CSV or JSON file to start screening PSX stocks.</div>
+        <div style="margin-top:14px;"><button class="btn primary" id="btnImportEmpty">Import Data</button></div>
+      </div>
+      <div class="table-wrap hidden" id="tableWrap">
+        <table class="datatable" id="mainTable">
+          <thead><tr id="tableHeadRow"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination hidden" id="paginationBar">
+        <button class="btn small ghost" id="prevPage">‹ Prev</button>
+        <span id="pageLabel">Page 1</span>
+        <button class="btn small ghost" id="nextPage">Next ›</button>
+        <select class="sel" id="pageSizeSel">
+          <option value="25">25/page</option>
+          <option value="50" selected>50/page</option>
+          <option value="100">100/page</option>
+          <option value="250">250/page</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- ============= SETTINGS / METHODOLOGY ============= -->
+    <section id="view-settings" class="hidden">
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:10px;">Data Source Configuration</div>
+        <div class="section-note">
+          Direct browser calls to PSX / SCS Trade endpoints are typically blocked by CORS. Enter a proxy
+          or API base URL below if you have one running — the app will use it for "Fetch Live". Nothing
+          is fetched from an invented or hard-coded endpoint. Until configured, use CSV/JSON import.
+        </div>
+        <label class="small-label">PSX Data API / Proxy Base URL</label>
+        <div class="inline-inputs">
+          <input class="field" id="cfgPsxUrl" style="width:340px;" placeholder="https://your-proxy.example.com/psx">
+        </div>
+        <label class="small-label" style="margin-top:10px;">SCS Trade API / Proxy Base URL</label>
+        <div class="inline-inputs">
+          <input class="field" id="cfgScsUrl" style="width:340px;" placeholder="https://your-proxy.example.com/scs">
+        </div>
+        <div style="margin-top:12px;"><button class="btn" id="btnSaveCfg">Save Configuration</button></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:10px;">Cheetah Score Methodology (0–100)</div>
+        <table class="settings-table">
+          <thead><tr><th>Component</th><th>Max Points</th><th>Primary Inputs</th></tr></thead>
+          <tbody>
+            <tr><td>Revenue &amp; Earnings Growth</td><td>20</td><td>Revenue Growth YoY, Profit Growth YoY, 3Y CAGRs</td></tr>
+            <tr><td>EPS Growth</td><td>15</td><td>EPS Growth YoY, EPS CAGR 3Y</td></tr>
+            <tr><td>ROE &amp; Profitability</td><td>15</td><td>ROE, Net Margin</td></tr>
+            <tr><td>Cash Flow Quality</td><td>15</td><td>OCF/Net Profit, OCF Growth, FCF sign</td></tr>
+            <tr><td>Balance Sheet / Debt</td><td>10</td><td>Debt/Equity, Current Ratio, Interest Coverage</td></tr>
+            <tr><td>Valuation</td><td>10</td><td>P/E vs Sector P/E, PEG</td></tr>
+            <tr><td>Technical Momentum</td><td>7</td><td>Price vs DMAs, RSI band, 1Y Return</td></tr>
+            <tr><td>Dividend Quality</td><td>3</td><td>Dividend Yield, Consistency, Payout sanity</td></tr>
+            <tr><td>Business / Ownership Quality</td><td>5</td><td>Sponsor Holding, Free Float, Red Flag count</td></tr>
+          </tbody>
+        </table>
+        <div class="section-note" style="margin-top:10px;">
+          The score is computed dynamically from whatever fields are present. If a component's inputs are
+          missing for a stock, that component is excluded and the remaining points are rescaled to 100 —
+          the stock is then labelled ⚠️ INCOMPLETE DATA rather than assigned a fabricated value.
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:10px;">CSV / JSON Column Aliases Recognized on Import</div>
+        <div class="code-block" id="aliasPreview"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="tiny">PSX Screener — for research purposes only. Not investment advice. Verify all data against official PSX / company filings before trading.</footer>
+</div>
+
+<!-- ============= FILTER SLIDEOVER ============= -->
+<div id="filterOverlay" class="overlay hidden"></div>
+<div id="filterPanel" class="slideover hidden">
+  <div class="so-head">
+    <b>Filter Builder</b>
+    <button class="icon-btn" id="closeFilters">✕</button>
+  </div>
+  <div class="so-body">
+    <div class="filter-group">
+      <h4>Saved Screens</h4>
+      <div class="preset-btns" id="presetBtns"></div>
+      <div class="inline-inputs">
+        <input class="field" id="saveScreenName" placeholder="Name this screen…" style="flex:1;">
+        <button class="btn small" id="btnSaveScreen">Save</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <h4>Fundamental Ranges</h4>
+      <div id="rangeFilters"></div>
+    </div>
+    <div class="filter-group">
+      <h4>Technical Conditions</h4>
+      <div id="toggleFilters"></div>
+    </div>
+  </div>
+  <div class="so-foot">
+    <button class="btn ghost" id="btnClearFilters">Clear All</button>
+    <button class="btn primary" id="btnApplyFilters" style="flex:1;">Apply Filters</button>
+  </div>
+</div>
+
+<!-- ============= COLUMN VISIBILITY POPOVER (reuses slideover) ============= -->
+<div id="colOverlay" class="overlay hidden"></div>
+<div id="colPanel" class="slideover hidden" style="width:280px;">
+  <div class="so-head"><b>Columns</b><button class="icon-btn" id="closeCols">✕</button></div>
+  <div class="so-body" id="colList"></div>
+</div>
+
+<!-- ============= IMPORT MODAL ============= -->
+<div id="importModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="m-head"><b>Import Data</b><button class="icon-btn" id="closeImport">✕</button></div>
+    <div class="m-body">
+      <div class="dropzone" id="dropzone">
+        <div style="font-size:26px;">📄</div>
+        <div>Drop a <b>.csv</b> or <b>.json</b> file here, or click to browse</div>
+        <div style="font-size:11px;margin-top:6px;">Column names are auto-mapped to the screener's fields.</div>
+        <input type="file" id="fileInput" accept=".csv,.json" class="hidden">
+      </div>
+      <div id="mappingPreview" class="hidden">
+        <div style="margin-top:12px;font-size:12.5px;color:var(--text-muted);">Detected column mapping:</div>
+        <table class="map-table" id="mapTable"></table>
+        <div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);" id="importSummary"></div>
+      </div>
+    </div>
+    <div class="m-foot">
+      <button class="btn ghost" id="cancelImport">Cancel</button>
+      <button class="btn primary hidden" id="confirmImport">Import <span id="confirmCount"></span> Stocks</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= STOCK DETAIL MODAL ============= -->
+<div id="detailModal" class="modal-backdrop hidden">
+  <div class="modal detail-modal">
+    <div class="m-head">
+      <div><b id="detailSymbol"></b> <span id="detailCompany" style="color:var(--text-muted);font-weight:400;"></span></div>
+      <button class="icon-btn" id="closeDetail">✕</button>
+    </div>
+    <div class="m-body" id="detailBody"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   1. DATA CONFIG
+   Placeholders only — no invented endpoints. The user supplies
+   real PSX / SCS Trade API or proxy URLs on the Settings screen
+   (values persisted only in memory for this session).
+   ============================================================ */
+const DataConfig = {
+  psxBaseUrl: "",
+  scsBaseUrl: "",
+  isLiveConfigured(){ return !!(this.psxBaseUrl || this.scsBaseUrl); }
+};
+
+/* ============================================================
+   2. DATA FETCHING LAYER
+   Thin wrapper so real endpoints can be dropped in later without
+   touching the screening/scoring/UI code below.
+   ============================================================ */
+const DataFetching = {
+  async fetchLivePsx(){
+    if(!DataConfig.psxBaseUrl) throw new Error("No PSX API/proxy URL configured.");
+    const res = await fetch(DataConfig.psxBaseUrl);
+    if(!res.ok) throw new Error("PSX endpoint returned HTTP " + res.status);
+    return res.json();
+  },
+  async fetchLiveScs(){
+    if(!DataConfig.scsBaseUrl) throw new Error("No SCS Trade API/proxy URL configured.");
+    const res = await fetch(DataConfig.scsBaseUrl);
+    if(!res.ok) throw new Error("SCS endpoint returned HTTP " + res.status);
+    return res.json();
+  }
+};
+
+/* ============================================================
+   3. DATA NORMALIZATION
+   Canonical stock schema + CSV/JSON parsing + column-alias mapping.
+   Missing values are always kept as null (rendered as N/A) — never
+   guessed or randomized.
+   ============================================================ */
+const CANONICAL_FIELDS = [
+  "symbol","company","sector",
+  "price","change1d","change1w","change1m","change3m","change6m","change1y",
+  "week52High","week52Low","dma20","dma50","dma100","dma200","rsi","macd","volume","avgVolume",
+  "pe","forwardPe","pb","peg","evEbitda","divYield",
+  "roe","roa","grossMargin","opMargin","netMargin",
+  "revGrowthYoY","revCagr3y","revCagr5y","profitGrowthYoY","profitCagr3y","profitCagr5y",
+  "eps","epsGrowthYoY","epsCagr3y","epsCagr5y",
+  "debtEquity","totalDebt","netDebt","interestCoverage","currentRatio","quickRatio","cash",
+  "ocf","fcf","ocfGrowth","fcfGrowth","ocfToNetProfit",
+  "payoutRatio","divGrowth","divConsistency",
+  "sponsorHolding","institutionalHolding","freeFloat","insiderHolding",
+  "sectorAvgPe","historicalPe",
+  // optional inputs used only for red-flag detection when supplied
+  "receivablesGrowth","equityGrowth","debtGrowth","marginTrend","sharesOutstandingGrowth",
+  "auditorNote","nonRecurringIncomeFlag"
+];
+
+const ALIAS_MAP = {
+  symbol:["symbol","ticker","code","psx symbol","scrip"],
+  company:["company","company name","name","companyname"],
+  sector:["sector","industry"],
+  price:["price","current price","last price","close","ltp"],
+  change1d:["1d change","change1d","daychange","1 day change","change%","change percent"],
+  change1w:["1w change","change1w","1 week change"],
+  change1m:["1m change","change1m","1 month change"],
+  change3m:["3m change","change3m","3 month change"],
+  change6m:["6m change","change6m","6 month change"],
+  change1y:["1y change","change1y","1 year change","1y return"],
+  week52High:["52 week high","52w high","week52high","high52w"],
+  week52Low:["52 week low","52w low","week52low","low52w"],
+  dma20:["20 dma","dma20","20day ma","sma20"],
+  dma50:["50 dma","dma50","50day ma","sma50"],
+  dma100:["100 dma","dma100","100day ma","sma100"],
+  dma200:["200 dma","dma200","200day ma","sma200"],
+  rsi:["rsi","rsi14"],
+  macd:["macd"],
+  volume:["volume","vol"],
+  avgVolume:["average volume","avg volume","avgvolume"],
+  pe:["pe","p/e","pe ratio","price to earnings"],
+  forwardPe:["forward pe","forward p/e"],
+  pb:["pb","p/b","pb ratio","price to book"],
+  peg:["peg","peg ratio"],
+  evEbitda:["ev/ebitda","evebitda"],
+  divYield:["dividend yield","div yield","yield"],
+  roe:["roe","return on equity"],
+  roa:["roa","return on assets"],
+  grossMargin:["gross margin"],
+  opMargin:["operating margin","op margin"],
+  netMargin:["net profit margin","net margin"],
+  revGrowthYoY:["revenue growth yoy","revenue growth","rev growth yoy","sales growth"],
+  revCagr3y:["revenue cagr 3y","rev cagr 3y"],
+  revCagr5y:["revenue cagr 5y","rev cagr 5y"],
+  profitGrowthYoY:["profit growth yoy","profit growth","net income growth"],
+  profitCagr3y:["profit cagr 3y"],
+  profitCagr5y:["profit cagr 5y"],
+  eps:["eps","earnings per share"],
+  epsGrowthYoY:["eps growth yoy","eps growth"],
+  epsCagr3y:["eps cagr 3y"],
+  epsCagr5y:["eps cagr 5y"],
+  debtEquity:["debt/equity","debt equity","de ratio","d/e"],
+  totalDebt:["total debt"],
+  netDebt:["net debt"],
+  interestCoverage:["interest coverage"],
+  currentRatio:["current ratio"],
+  quickRatio:["quick ratio"],
+  cash:["cash","cash and equivalents"],
+  ocf:["operating cash flow","ocf"],
+  fcf:["free cash flow","fcf"],
+  ocfGrowth:["ocf growth"],
+  fcfGrowth:["fcf growth"],
+  ocfToNetProfit:["ocf/net profit","ocf to net profit"],
+  payoutRatio:["payout ratio"],
+  divGrowth:["dividend growth","div growth"],
+  divConsistency:["dividend consistency","div consistency"],
+  sponsorHolding:["sponsor holding","promoter holding","sponsor/promoter holding"],
+  institutionalHolding:["institutional holding"],
+  freeFloat:["free float"],
+  insiderHolding:["insider holding","director holding"],
+  sectorAvgPe:["sector avg pe","sector pe"],
+  historicalPe:["historical pe","own historical pe"],
+  receivablesGrowth:["receivables growth"],
+  equityGrowth:["equity growth"],
+  debtGrowth:["debt growth"],
+  marginTrend:["margin trend"],
+  sharesOutstandingGrowth:["shares outstanding growth","dilution"],
+  auditorNote:["auditor note","auditor qualification"],
+  nonRecurringIncomeFlag:["one off income","non recurring income","nonrecurringincomeflag"]
+};
+
+function normalizeHeader(h){ return String(h).toLowerCase().trim().replace(/_/g," ").replace(/\s+/g," "); }
+
+function buildHeaderMapping(headers){
+  const map = {}; // canonical -> original header
+  const normHeaders = headers.map(h=>({raw:h, norm:normalizeHeader(h)}));
+  Object.keys(ALIAS_MAP).forEach(canon=>{
+    const aliases = ALIAS_MAP[canon];
+    const found = normHeaders.find(nh=> aliases.includes(nh.norm));
+    if(found) map[canon] = found.raw;
+  });
+  return map;
+}
+
+function toNumberOrNull(v){
+  if(v===undefined||v===null||v==="") return null;
+  if(typeof v==="boolean") return v;
+  const cleaned = String(v).replace(/[%,\s]/g,"");
+  if(cleaned===""||cleaned==="N/A"||cleaned==="NA"||cleaned==="-") return null;
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+// Simple RFC4180-ish CSV parser (handles quoted fields, commas, escaped quotes, CRLF)
+function parseCSV(text){
+  const rows=[]; let row=[]; let field=""; let inQuotes=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field+='"'; i++; } else { inQuotes=false; }
+      } else field+=c;
+    } else {
+      if(c === '"') inQuotes=true;
+      else if(c===','){ row.push(field); field=""; }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
+      else if(c==='\r'){ /* skip */ }
+      else field+=c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r=> r.length>1 || (r.length===1 && r[0]!==""));
+}
+
+function normalizeCsvRows(rows){
+  if(!rows.length) return {stocks:[], mapping:{}};
+  const headers = rows[0];
+  const mapping = buildHeaderMapping(headers);
+  const stocks = [];
+  for(let i=1;i<rows.length;i++){
+    const raw = rows[i]; if(!raw.length) continue;
+    const obj = {}; headers.forEach((h,idx)=> obj[h]=raw[idx]);
+    stocks.push(normalizeStockRecord(obj, mapping));
+  }
+  return {stocks, mapping};
+}
+
+function normalizeStockRecord(raw, mapping){
+  const s = {};
+  CANONICAL_FIELDS.forEach(f=>{
+    const origHeader = mapping[f];
+    let val = origHeader!==undefined ? raw[origHeader] : (raw[f]!==undefined?raw[f]:undefined);
+    if(f==="symbol"||f==="company"||f==="sector"||f==="auditorNote"){
+      s[f] = (val===undefined||val===null||val==="") ? null : String(val).trim();
+    } else if(f==="nonRecurringIncomeFlag"){
+      s[f] = (val===undefined||val===null||val==="") ? null : (val===true||/^(true|yes|1)$/i.test(String(val)));
+    } else {
+      s[f] = toNumberOrNull(val);
+    }
+  });
+  if(raw.history) s.history = raw.history; // JSON import may carry rich history
+  s._id = (s.symbol||("row"+Math.random().toString(36).slice(2)));
+  return s;
+}
+
+function normalizeJson(json){
+  const arr = Array.isArray(json) ? json : (Array.isArray(json.stocks) ? json.stocks : []);
+  const mapping = arr.length ? buildHeaderMapping(Object.keys(arr[0])) : {};
+  const stocks = arr.map(r=> normalizeStockRecord(r, mapping));
+  return {stocks, mapping};
+}
+
+/* ============================================================
+   4. SCREENING ENGINE
+   Pure functions over the normalized stock array — filters,
+   search, sort. No UI concerns in this section.
+   ============================================================ */
+const Screening = {
+  search(stocks, q){
+    if(!q) return stocks;
+    q = q.toLowerCase();
+    return stocks.filter(s => (s.symbol||"").toLowerCase().includes(q) || (s.company||"").toLowerCase().includes(q));
+  },
+  bySector(stocks, sector){
+    if(!sector) return stocks;
+    return stocks.filter(s => s.sector === sector);
+  },
+  byRanges(stocks, ranges){
+    // ranges: { field: {min, max} }
+    return stocks.filter(s => Object.keys(ranges).every(f=>{
+      const r = ranges[f]; const v = s[f];
+      if(r.min===null && r.max===null) return true;
+      if(v===null||v===undefined) return false; // require data to satisfy an active numeric filter
+      if(r.min!==null && v < r.min) return false;
+      if(r.max!==null && v > r.max) return false;
+      return true;
+    }));
+  },
+  byToggles(stocks, toggles){
+    const active = Object.keys(toggles).filter(k=>toggles[k]);
+    if(!active.length) return stocks;
+    return stocks.filter(s=> active.every(key => TECH_CONDITIONS[key](s)));
+  },
+  sort(stocks, field, dir){
+    const mult = dir==="asc" ? 1 : -1;
+    return [...stocks].sort((a,b)=>{
+      let av = field==="cheetahScore" ? (a._score ? a._score.total : null) : a[field];
+      let bv = field==="cheetahScore" ? (b._score ? b._score.total : null) : b[field];
+      if(av===null||av===undefined) return 1;
+      if(bv===null||bv===undefined) return -1;
+      if(typeof av === "string") return av.localeCompare(bv) * mult;
+      return (av-bv) * mult;
+    });
+  }
+};
+
+const TECH_CONDITIONS = {
+  aboveDma20: s=> s.price!==null && s.dma20!==null && s.price > s.dma20,
+  aboveDma50: s=> s.price!==null && s.dma50!==null && s.price > s.dma50,
+  aboveDma200: s=> s.price!==null && s.dma200!==null && s.price > s.dma200,
+  goldenCross: s=> s.dma50!==null && s.dma200!==null && s.dma50 > s.dma200,
+  breakout: s=> s.price!==null && s.week52High!==null && s.price >= s.week52High*0.98,
+  volumeBreakout: s=> s.volume!==null && s.avgVolume!==null && s.volume > s.avgVolume*1.5 &&
+                       s.price!==null && s.dma50!==null && s.price > s.dma50
+};
+
+/* ============================================================
+   5. SCORING ENGINE
+   Cheetah Score (0-100), red-flag detection, sector stats.
+   All weights are transparent and documented in Settings view.
+   ============================================================ */
+function clampScore(v,max){ return Math.max(0, Math.min(max, v)); }
+
+// Piecewise mapper: value -> points, given a set of (threshold, points) breakpoints (descending thresholds)
+function mapBreakpoints(value, points_for){
+  for(const [thresh, pts] of points_for){ if(value >= thresh) return pts; }
+  return 0;
+}
+
+function computeSubscores(s, sectorStats){
+  const parts = {}; // name -> {points, max, available}
+
+  // Revenue & Earnings Growth (20)
+  {
+    const vals=[s.revGrowthYoY, s.profitGrowthYoY, s.revCagr3y, s.profitCagr3y].filter(v=>v!==null);
+    if(vals.length){
+      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+      const pts = clampScore(mapBreakpoints(avg,[[30,20],[20,16],[12,12],[6,7],[0,3]]),20);
+      parts.growth = {points:pts, max:20, available:true};
+    } else parts.growth = {points:0,max:20,available:false};
+  }
+  // EPS Growth (15)
+  {
+    const vals=[s.epsGrowthYoY, s.epsCagr3y].filter(v=>v!==null);
+    if(vals.length){
+      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+      parts.eps = {points: clampScore(mapBreakpoints(avg,[[30,15],[20,12],[12,9],[6,5],[0,2]]),15), max:15, available:true};
+    } else parts.eps = {points:0,max:15,available:false};
+  }
+  // ROE & Profitability (15)
+  {
+    const have = s.roe!==null || s.netMargin!==null;
+    if(have){
+      let pts=0, weight=0;
+      if(s.roe!==null){ pts += mapBreakpoints(s.roe,[[25,10],[18,8],[12,5],[6,2],[0,0]]); weight+=10; }
+      if(s.netMargin!==null){ pts += mapBreakpoints(s.netMargin,[[20,5],[12,4],[6,2],[0,1]]); weight+=5; }
+      parts.roe = {points: clampScore(pts * (15/Math.max(weight,1)),15), max:15, available:true};
+    } else parts.roe = {points:0,max:15,available:false};
+  }
+  // Cash Flow Quality (15)
+  {
+    const have = s.ocfToNetProfit!==null || s.fcf!==null || s.ocfGrowth!==null;
+    if(have){
+      let pts=0, weight=0;
+      if(s.ocfToNetProfit!==null){ pts += mapBreakpoints(s.ocfToNetProfit,[[1.2,7],[0.9,5],[0.6,3],[0,1]]); weight+=7; }
+      if(s.fcf!==null){ pts += (s.fcf>0?5:0); weight+=5; }
+      if(s.ocfGrowth!==null){ pts += mapBreakpoints(s.ocfGrowth,[[15,3],[5,2],[0,1]]); weight+=3; }
+      parts.cash = {points: clampScore(pts*(15/Math.max(weight,1)),15), max:15, available:true};
+    } else parts.cash = {points:0,max:15,available:false};
+  }
+  // Balance Sheet / Debt (10)
+  {
+    const have = s.debtEquity!==null || s.currentRatio!==null || s.interestCoverage!==null;
+    if(have){
+      let pts=0, weight=0;
+      if(s.debtEquity!==null){ pts += mapBreakpoints(5-s.debtEquity,[[4.5,5],[3.5,4],[2,2],[0,1]]); weight+=5; }
+      if(s.currentRatio!==null){ pts += mapBreakpoints(s.currentRatio,[[1.5,3],[1,2],[0.7,1]]); weight+=3; }
+      if(s.interestCoverage!==null){ pts += mapBreakpoints(s.interestCoverage,[[6,2],[3,1]]); weight+=2; }
+      parts.debt = {points: clampScore(pts*(10/Math.max(weight,1)),10), max:10, available:true};
+    } else parts.debt = {points:0,max:10,available:false};
+  }
+  // Valuation (10)
+  {
+    const secPe = s.sectorAvgPe!==null ? s.sectorAvgPe : (sectorStats && sectorStats.avgPe);
+    if(s.pe!==null && secPe){
+      const rel = s.pe / secPe;
+      let pts = mapBreakpoints(1/Math.max(rel,0.01),[[1.6,10],[1.25,8],[1.0,6],[0.8,4],[0,2]]);
+      if(s.peg!==null){ pts = pts*0.7 + mapBreakpoints(2-s.peg,[[1.5,3],[1,2.2],[0.5,1]])*(3/3)*0; }
+      parts.valuation = {points: clampScore(pts,10), max:10, available:true};
+    } else parts.valuation = {points:0,max:10,available:false};
+  }
+  // Technical Momentum (7)
+  {
+    const conds = [TECH_CONDITIONS.aboveDma50(s), TECH_CONDITIONS.aboveDma200(s), TECH_CONDITIONS.goldenCross(s)];
+    const rsiOk = s.rsi!==null && s.rsi>=40 && s.rsi<=70;
+    const have = s.dma50!==null || s.dma200!==null || s.rsi!==null || s.change1y!==null;
+    if(have){
+      let pts=0;
+      pts += conds.filter(Boolean).length * 1.4;
+      if(rsiOk) pts += 1.5;
+      if(s.change1y!==null && s.change1y>0) pts += Math.min(1.5, s.change1y/40);
+      parts.technical = {points: clampScore(pts,7), max:7, available:true};
+    } else parts.technical = {points:0,max:7,available:false};
+  }
+  // Dividend Quality (3)
+  {
+    if(s.divYield!==null){
+      let pts = mapBreakpoints(s.divYield,[[8,1.5],[5,2.2],[3,3],[1,1.5],[0,0.5]]);
+      if(s.payoutRatio!==null && s.payoutRatio>0 && s.payoutRatio<=80) pts = Math.min(3,pts+0.5);
+      if(s.divConsistency!==null) pts = Math.min(3, pts*(s.divConsistency/100)+pts*0.3);
+      parts.dividend = {points: clampScore(pts,3), max:3, available:true};
+    } else parts.dividend = {points:0,max:3,available:false};
+  }
+  // Business / Ownership Quality (5)
+  {
+    if(s.sponsorHolding!==null || s.freeFloat!==null){
+      let pts=0, weight=0;
+      if(s.sponsorHolding!==null){ pts += mapBreakpoints(s.sponsorHolding,[[50,3],[30,2],[15,1]]); weight+=3; }
+      if(s.freeFloat!==null){ pts += mapBreakpoints(s.freeFloat,[[15,2],[8,1.4],[3,0.8]]); weight+=2; }
+      parts.quality = {points: clampScore(pts*(5/Math.max(weight,1)),5), max:5, available:true};
+    } else parts.quality = {points:0,max:5,available:false};
+  }
+  return parts;
+}
+
+function computeCheetahScore(s, sectorStats){
+  const parts = computeSubscores(s, sectorStats);
+  const flags = detectRedFlags(s);
+  let earned=0, maxAvailable=0;
+  Object.values(parts).forEach(p=>{ if(p.available){ earned+=p.points; maxAvailable+=p.max; } });
+  const totalWeight = 20+15+15+15+10+10+7+3+5; // 100
+  let total = maxAvailable>0 ? (earned/maxAvailable)*100 : null;
+  // small penalty for red flags (max -8), never below 0
+  if(total!==null && flags.length){ total = Math.max(0, total - Math.min(8, flags.length*2)); }
+  const coverage = maxAvailable/totalWeight;
+  const incomplete = coverage < 0.6;
+  return {
+    total: total===null? null : Math.round(total*10)/10,
+    parts, flags, coverage: Math.round(coverage*100), incomplete
+  };
+}
+
+function scoreClass(total){
+  if(total===null) return {cls:"incomplete", label:"N/A"};
+  if(total>=90) return {cls:"cheetah", label:"🔥 CHEETAH"};
+  if(total>=80) return {cls:"strong", label:"🟢 STRONG"};
+  if(total>=70) return {cls:"good", label:"🟡 GOOD"};
+  if(total>=60) return {cls:"watch", label:"🟠 WATCH"};
+  return {cls:"weak", label:"🔴 WEAK"};
+}
+
+const RED_FLAG_DEFS = [
+  {key:"profitCashDiverge", label:"Profit rising, cash flow falling",
+   test:s=> s.profitGrowthYoY!==null && s.ocfGrowth!==null && s.profitGrowthYoY>5 && s.ocfGrowth<0},
+  {key:"receivablesOutpace", label:"Receivables rising much faster than sales",
+   test:s=> s.receivablesGrowth!==null && s.revGrowthYoY!==null && (s.receivablesGrowth - s.revGrowthYoY) > 15},
+  {key:"oneOffEps", label:"EPS growth likely includes one-off income",
+   test:s=> s.nonRecurringIncomeFlag===true},
+  {key:"roeFromEquityFall", label:"ROE rising because equity has fallen",
+   test:s=> s.equityGrowth!==null && s.equityGrowth<0 && s.roe!==null && s.roe>15},
+  {key:"lowPeTempEarnings", label:"Very low P/E possibly from temporary earnings spike",
+   test:s=> s.profitGrowthYoY!==null && s.profitCagr3y!==null && s.profitCagr3y>0 &&
+            s.profitGrowthYoY > s.profitCagr3y*3 && s.pe!==null && s.sectorAvgPe!==null && s.pe < s.sectorAvgPe*0.5},
+  {key:"yieldFromPriceFall", label:"High dividend yield driven by falling share price",
+   test:s=> s.divYield!==null && s.divYield>7 && s.change1y!==null && s.change1y< -20},
+  {key:"rapidDebtIncrease", label:"Rapid increase in debt",
+   test:s=> s.debtGrowth!==null && s.debtGrowth>30},
+  {key:"decliningMargins", label:"Declining margins",
+   test:s=> s.marginTrend!==null && s.marginTrend<0},
+  {key:"frequentDilution", label:"Frequent share dilution",
+   test:s=> s.sharesOutstandingGrowth!==null && s.sharesOutstandingGrowth>10},
+  {key:"weakLiquidity", label:"Weak liquidity",
+   test:s=> (s.currentRatio!==null && s.currentRatio<1) || (s.quickRatio!==null && s.quickRatio<0.5)},
+  {key:"auditorWarning", label:"Auditor qualification / warning on file",
+   test:s=> !!s.auditorNote}
+];
+
+function detectRedFlags(s){
+  return RED_FLAG_DEFS.filter(f=> { try { return f.test(s); } catch(e){ return false; } }).map(f=>f.label);
+}
+
+function computeSectorStats(stocks){
+  const bySector = {};
+  stocks.forEach(s=>{
+    const sec = s.sector || "Other";
+    if(!bySector[sec]) bySector[sec] = {pe:[], roe:[], growth:[]};
+    if(s.pe!==null) bySector[sec].pe.push(s.pe);
+    if(s.roe!==null) bySector[sec].roe.push(s.roe);
+    if(s.revGrowthYoY!==null) bySector[sec].growth.push(s.revGrowthYoY);
+  });
+  const stats = {};
+  Object.keys(bySector).forEach(sec=>{
+    const g = bySector[sec];
+    const avg = arr=> arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    stats[sec] = {avgPe: avg(g.pe), avgRoe: avg(g.roe), avgGrowth: avg(g.growth)};
+  });
+  return stats;
+}
+
+/* ============================================================
+   6. UI
+   State, rendering, events.
+   ============================================================ */
+const State = {
+  stocks: [],
+  dataSource: null,
+  lastUpdated: null,
+  sectorStats: {},
+  view: "dashboard",
+  search: "",
+  sector: "",
+  ranges: {}, // field -> {min,max}
+  toggles: {}, // field -> bool
+  sort: {field:"cheetahScore", dir:"desc"},
+  page: 1,
+  pageSize: 50,
+  visibleCols: null, // set below to defaults
+  savedScreens: [],
+  presetActive: null
+};
+
+const DEFAULT_COLUMNS = [
+  {key:"rank", label:"Rank"},
+  {key:"symbol", label:"Symbol"},
+  {key:"company", label:"Company"},
+  {key:"sector", label:"Sector"},
+  {key:"price", label:"Price"},
+  {key:"change1d", label:"Change %"},
+  {key:"pe", label:"P/E"},
+  {key:"roe", label:"ROE"},
+  {key:"eps", label:"EPS"},
+  {key:"epsGrowthYoY", label:"EPS Growth"},
+  {key:"revGrowthYoY", label:"Revenue Growth"},
+  {key:"profitGrowthYoY", label:"Profit Growth"},
+  {key:"debtEquity", label:"Debt/Equity"},
+  {key:"ocf", label:"OCF"},
+  {key:"fcf", label:"FCF"},
+  {key:"divYield", label:"Dividend Yield"},
+  {key:"sponsorHolding", label:"Sponsor Holding"},
+  {key:"rsi", label:"RSI"},
+  {key:"dma50", label:"50 DMA"},
+  {key:"dma200", label:"200 DMA"},
+  {key:"change1y", label:"1Y Return"},
+  {key:"cheetahScore", label:"Cheetah Score"},
+  {key:"trend", label:"Trend"},
+  {key:"risk", label:"Risk"}
+];
+State.visibleCols = DEFAULT_COLUMNS.map(c=>c.key);
+
+const RANGE_FIELDS = [
+  {key:"roe", label:"ROE %", ph:"e.g. 20"},
+  {key:"epsGrowthYoY", label:"EPS Growth %"},
+  {key:"profitGrowthYoY", label:"Profit Growth %"},
+  {key:"revGrowthYoY", label:"Revenue Growth %"},
+  {key:"debtEquity", label:"Debt/Equity"},
+  {key:"pe", label:"P/E"},
+  {key:"divYield", label:"Dividend Yield %"},
+  {key:"sponsorHolding", label:"Sponsor Holding %"},
+  {key:"rsi", label:"RSI"}
+];
+const TOGGLE_FIELDS = [
+  {key:"aboveDma20", label:"Price above 20 DMA"},
+  {key:"aboveDma50", label:"Price above 50 DMA"},
+  {key:"aboveDma200", label:"Price above 200 DMA"},
+  {key:"goldenCross", label:"Golden Cross (50>200 DMA)"},
+  {key:"breakout", label:"Near 52W High / Breakout"},
+  {key:"volumeBreakout", label:"Volume-supported breakout"}
+];
+
+const PRESETS = {
+  "🔥 Cheetah": {ranges:{roe:{min:18,max:null}, epsGrowthYoY:{min:15,max:null}, debtEquity:{min:null,max:1}}, toggles:{aboveDma50:true}},
+  "💰 Value": {ranges:{pe:{min:null,max:12}, roe:{min:12,max:null}}, toggles:{}},
+  "💵 Dividend": {ranges:{divYield:{min:5,max:null}}, toggles:{}},
+  "📈 Growth": {ranges:{revGrowthYoY:{min:15,max:null}, profitGrowthYoY:{min:15,max:null}}, toggles:{}},
+  "🚀 Momentum": {ranges:{}, toggles:{aboveDma50:true, aboveDma200:true, goldenCross:true}},
+  "🛡️ Low Risk": {ranges:{debtEquity:{min:null,max:0.5}, currentRatio:{min:1,max:null}}, toggles:{}}
+};
+
+const VIEW_PRESET_FILTER = {
+  cheetah: s => s._score && s._score.total!==null && s._score.total>=80,
+  growth: s => (s.revGrowthYoY!==null && s.revGrowthYoY>=15) || (s.profitGrowthYoY!==null && s.profitGrowthYoY>=15),
+  value: s => s.pe!==null && s.pe>0 && s.pe<=15,
+  dividend: s => s.divYield!==null && s.divYield>=4,
+  momentum: s => TECH_CONDITIONS.aboveDma50(s) && TECH_CONDITIONS.aboveDma200(s)
+};
+
+function fmt(v, decimals, suffix){
+  if(v===null || v===undefined || isNaN(v)) return '<span class="na">N/A</span>';
+  return v.toFixed(decimals!==undefined?decimals:2) + (suffix||"");
+}
+function fmtPct(v){ return fmt(v,2,"%"); }
+function changeClass(v){ if(v===null||v===undefined) return "flat"; return v>0?"up":(v<0?"down":"flat"); }
+function changeArrow(v){ if(v===null||v===undefined) return ""; return v>0?"▲":(v<0?"▼":"—"); }
+
+// ---- recompute derived data (scores, sector stats) whenever stock set changes
+function recomputeDerived(){
+  State.sectorStats = computeSectorStats(State.stocks);
+  State.stocks.forEach(s=>{
+    s._score = computeCheetahScore(s, State.sectorStats[s.sector||"Other"]);
+    s._flags = s._score.flags;
+  });
+}
+
+function applyPipeline(){
+  let list = State.stocks.slice();
+  list = Screening.search(list, State.search);
+  list = Screening.bySector(list, State.sector);
+  list = Screening.byRanges(list, State.ranges);
+  list = Screening.byToggles(list, State.toggles);
+  if(VIEW_PRESET_FILTER[State.view]) list = list.filter(VIEW_PRESET_FILTER[State.view]);
+  list = Screening.sort(list, State.sort.field, State.sort.dir);
+  return list;
+}
+
+/* ---------- rendering: nav / views ---------- */
+function setView(v){
+  State.view = v; State.page = 1;
+  document.querySelectorAll(".navtab").forEach(el=> el.classList.toggle("active", el.dataset.view===v));
+  document.getElementById("view-dashboard").classList.toggle("hidden", v!=="dashboard");
+  const isTableView = ["stocks","cheetah","growth","value","dividend","momentum"].includes(v);
+  document.getElementById("view-stocks").classList.toggle("hidden", !isTableView);
+  document.getElementById("view-settings").classList.toggle("hidden", v!=="settings");
+  if(v==="dashboard") renderDashboard();
+  if(isTableView) renderTable();
+  if(v==="settings") renderSettings();
+}
+
+function renderDashboard(){
+  const stats = document.getElementById("dashStats");
+  const total = State.stocks.length;
+  const qualified = State.stocks.filter(s=> s._score && s._score.total!==null).length;
+  const cheetahCount = State.stocks.filter(s=> s._score && s._score.total>=90).length;
+  const strongCount = State.stocks.filter(s=> s._score && s._score.total>=80 && s._score.total<90).length;
+  const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : null;
+  const avgRoe = avg(State.stocks.map(s=>s.roe).filter(v=>v!==null));
+  const avgEps = avg(State.stocks.map(s=>s.epsGrowthYoY).filter(v=>v!==null));
+  const avgProfit = avg(State.stocks.map(s=>s.profitGrowthYoY).filter(v=>v!==null));
+  const ups = State.stocks.filter(s=> s.change1d!==null && s.change1d>0).length;
+  const downs = State.stocks.filter(s=> s.change1d!==null && s.change1d<0).length;
+  const marketMood = (ups+downs)===0 ? "—" : (ups>downs ? "🟢 Bullish" : (downs>ups ? "🔴 Bearish" : "🟡 Neutral"));
+
+  const cards = [
+    ["Total Stocks", total, ""],
+    ["Qualified Stocks", qualified, "have enough data to score"],
+    ["Cheetah Stocks", cheetahCount, "score ≥ 90"],
+    ["Strong Stocks", strongCount, "score 80–89"],
+    ["Avg ROE", avgRoe!==null?avgRoe.toFixed(1)+"%":"N/A", ""],
+    ["Avg EPS Growth", avgEps!==null?avgEps.toFixed(1)+"%":"N/A", ""],
+    ["Avg Profit Growth", avgProfit!==null?avgProfit.toFixed(1)+"%":"N/A", ""],
+    ["Market Mood", marketMood, ups+" up / "+downs+" down today"]
+  ];
+  stats.innerHTML = cards.map(c=>`<div class="stat-card"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="sub">${c[2]}</div></div>`).join("");
+
+  renderMiniList("topCheetah", [...State.stocks].filter(s=>s._score.total!==null).sort((a,b)=>b._score.total-a._score.total).slice(0,10), s=> scoreClass(s._score.total).label);
+  renderMiniList("topGrowth", [...State.stocks].filter(s=>s.revGrowthYoY!==null).sort((a,b)=>b.revGrowthYoY-a.revGrowthYoY).slice(0,10), s=> fmtPct(s.revGrowthYoY)+" rev");
+  renderMiniList("topValue", [...State.stocks].filter(s=>s.pe!==null && s.pe>0).sort((a,b)=>a.pe-b.pe).slice(0,10), s=> "P/E "+fmt(s.pe,1));
+  renderMiniList("topDividend", [...State.stocks].filter(s=>s.divYield!==null).sort((a,b)=>b.divYield-a.divYield).slice(0,10), s=> fmtPct(s.divYield));
+  renderMiniList("topMomentum", [...State.stocks].filter(s=>s.change1y!==null).sort((a,b)=>b.change1y-a.change1y).slice(0,10), s=> fmtPct(s.change1y)+" 1Y");
+}
+
+function renderMiniList(id, list, sideFn){
+  const el = document.getElementById(id);
+  if(!list.length){ el.innerHTML = '<div class="empty-state" style="padding:20px;"><div>No data</div></div>'; return; }
+  el.innerHTML = list.map(s=>`
+    <div class="mini-row" data-sym="${s._id}">
+      <div><span class="sym">${s.symbol||"?"}</span> <span class="co">${s.company||""}</span></div>
+      <div class="mono">${sideFn(s)}</div>
+    </div>`).join("");
+  el.querySelectorAll(".mini-row").forEach(row=> row.addEventListener("click", ()=> openDetail(row.dataset.sym)));
+}
+
+/* ---------- table rendering ---------- */
+function renderTableHead(){
+  const row = document.getElementById("tableHeadRow");
+  const cols = DEFAULT_COLUMNS.filter(c=> State.visibleCols.includes(c.key));
+  row.innerHTML = cols.map(c=>{
+    const arrow = State.sort.field===c.key ? (State.sort.dir==="asc"?"▲":"▼") : "";
+    return `<th data-key="${c.key}">${c.label}<span class="arrow">${arrow}</span></th>`;
+  }).join("");
+  row.querySelectorAll("th").forEach(th=> th.addEventListener("click", ()=>{
+    const key = th.dataset.key;
+    if(State.sort.field===key) State.sort.dir = State.sort.dir==="asc"?"desc":"asc";
+    else { State.sort.field=key; State.sort.dir = key==="cheetahScore"?"desc":"asc"; }
+    renderTable();
+  }));
+}
+
+function cellValue(s, key, rank){
+  switch(key){
+    case "rank": return rank;
+    case "symbol": return `<td class="txt" style="font-weight:700;">${s.symbol||"?"}</td>`;
+    case "company": return `<td class="txt" style="color:var(--text-muted);">${s.company||"N/A"}</td>`;
+    case "sector": return `<td class="txt">${s.sector||"N/A"}</td>`;
+    case "price": return `<td>${fmt(s.price,2)}</td>`;
+    case "change1d": return `<td class="${changeClass(s.change1d)}">${changeArrow(s.change1d)} ${fmtPct(s.change1d)}</td>`;
+    case "pe": return `<td>${fmt(s.pe,1)}</td>`;
+    case "roe": return `<td>${fmtPct(s.roe)}</td>`;
+    case "eps": return `<td>${fmt(s.eps,2)}</td>`;
+    case "epsGrowthYoY": return `<td class="${changeClass(s.epsGrowthYoY)}">${fmtPct(s.epsGrowthYoY)}</td>`;
+    case "revGrowthYoY": return `<td class="${changeClass(s.revGrowthYoY)}">${fmtPct(s.revGrowthYoY)}</td>`;
+    case "profitGrowthYoY": return `<td class="${changeClass(s.profitGrowthYoY)}">${fmtPct(s.profitGrowthYoY)}</td>`;
+    case "debtEquity": return `<td>${fmt(s.debtEquity,2)}</td>`;
+    case "ocf": return `<td>${fmt(s.ocf,0)}</td>`;
+    case "fcf": return `<td>${fmt(s.fcf,0)}</td>`;
+    case "divYield": return `<td>${fmtPct(s.divYield)}</td>`;
+    case "sponsorHolding": return `<td>${fmtPct(s.sponsorHolding)}</td>`;
+    case "rsi": return `<td>${fmt(s.rsi,1)}</td>`;
+    case "dma50": return `<td>${fmt(s.dma50,2)}</td>`;
+    case "dma200": return `<td>${fmt(s.dma200,2)}</td>`;
+    case "change1y": return `<td class="${changeClass(s.change1y)}">${fmtPct(s.change1y)}</td>`;
+    case "cheetahScore": {
+      const sc = s._score; const meta = scoreClass(sc.total);
+      return `<td><span class="badge ${meta.cls}">${sc.total!==null? sc.total.toFixed(1) : "N/A"} ${meta.label}</span></td>`;
+    }
+    case "trend": {
+      const up = TECH_CONDITIONS.aboveDma50(s) && TECH_CONDITIONS.aboveDma200(s);
+      return `<td class="txt">${up?'<span class="up">Uptrend</span>':'<span class="down">Weak/Down</span>'}</td>`;
+    }
+    case "risk": {
+      const n = s._flags ? s._flags.length : 0;
+      return `<td class="txt">${n===0?'<span class="up">Low</span>':(n<=2?'<span style="color:var(--gold)">Moderate</span>':'<span class="down">High</span>')}</td>`;
+    }
+    default: return `<td>N/A</td>`;
+  }
+}
+
+let currentPageList = [];
+function renderTable(){
+  const list = applyPipeline();
+  currentPageList = list;
+  document.getElementById("rowCountLabel").textContent = list.length + " stocks";
+  document.getElementById("activeFilterCount").textContent = activeFilterCountText();
+
+  const hasAnyData = State.stocks.length>0;
+  document.getElementById("stocksEmptyState").classList.toggle("hidden", hasAnyData);
+  document.getElementById("tableWrap").classList.toggle("hidden", !hasAnyData);
+  document.getElementById("paginationBar").classList.toggle("hidden", !hasAnyData);
+  if(!hasAnyData) return;
+
+  renderTableHead();
+  const totalPages = Math.max(1, Math.ceil(list.length / State.pageSize));
+  if(State.page>totalPages) State.page = totalPages;
+  const startIdx = (State.page-1)*State.pageSize;
+  const pageItems = list.slice(startIdx, startIdx+State.pageSize);
+  const cols = DEFAULT_COLUMNS.filter(c=> State.visibleCols.includes(c.key));
+
+  const body = document.getElementById("tableBody");
+  body.innerHTML = pageItems.map((s,i)=>{
+    const rank = startIdx+i+1;
+    const cells = cols.map(c=> c.key==="rank" ? `<td>${rank}</td>` : cellValue(s,c.key,rank)).join("");
+    return `<tr data-sym="${s._id}">${cells}</tr>`;
+  }).join("");
+  body.querySelectorAll("tr").forEach(tr=> tr.addEventListener("click", ()=> openDetail(tr.dataset.sym)));
+  document.getElementById("pageLabel").textContent = `Page ${State.page} of ${totalPages}`;
+}
+
+function activeFilterCountText(){
+  let n=0;
+  Object.values(State.ranges).forEach(r=>{ if(r.min!==null||r.max!==null) n++; });
+  Object.values(State.toggles).forEach(v=>{ if(v) n++; });
+  if(State.sector) n++;
+  return n? `(${n})` : "";
+}
+
+/* ---------- filter panel ---------- */
+function renderFilterPanel(){
+  const rangeWrap = document.getElementById("rangeFilters");
+  rangeWrap.innerHTML = RANGE_FIELDS.map(f=>{
+    const cur = State.ranges[f.key] || {min:null,max:null};
+    return `<div class="range-row">
+      <label>${f.label}</label>
+      <input type="number" step="any" placeholder="min" data-range="${f.key}" data-bound="min" value="${cur.min??""}">
+      <input type="number" step="any" placeholder="max" data-range="${f.key}" data-bound="max" value="${cur.max??""}">
+    </div>`;
+  }).join("");
+  rangeWrap.querySelectorAll("input").forEach(inp=> inp.addEventListener("input", ()=>{
+    const k = inp.dataset.range, b = inp.dataset.bound;
+    if(!State.ranges[k]) State.ranges[k] = {min:null,max:null};
+    const v = inp.value===""? null : parseFloat(inp.value);
+    State.ranges[k][b] = isNaN(v)?null:v;
+  }));
+
+  const toggleWrap = document.getElementById("toggleFilters");
+  toggleWrap.innerHTML = TOGGLE_FIELDS.map(f=>`
+    <div class="toggle-row"><input type="checkbox" id="tg_${f.key}" ${State.toggles[f.key]?"checked":""}> <label for="tg_${f.key}">${f.label}</label></div>
+  `).join("");
+  toggleWrap.querySelectorAll("input").forEach(cb=> cb.addEventListener("change", ()=>{
+    State.toggles[cb.id.replace("tg_","")] = cb.checked;
+  }));
+
+  const presetWrap = document.getElementById("presetBtns");
+  presetWrap.innerHTML = Object.keys(PRESETS).map(name=>`<div class="chip" data-preset="${name}">${name}</div>`).join("") +
+    State.savedScreens.map(n=>`<div class="chip" data-saved="${n.name}">💾 ${n.name}</div>`).join("");
+  presetWrap.querySelectorAll("[data-preset]").forEach(chip=> chip.addEventListener("click", ()=>{
+    const p = PRESETS[chip.dataset.preset];
+    State.ranges = JSON.parse(JSON.stringify(p.ranges));
+    State.toggles = JSON.parse(JSON.stringify(p.toggles));
+    renderFilterPanel();
+  }));
+  presetWrap.querySelectorAll("[data-saved]").forEach(chip=> chip.addEventListener("click", ()=>{
+    const sc = State.savedScreens.find(x=>x.name===chip.dataset.saved);
+    if(sc){ State.ranges = JSON.parse(JSON.stringify(sc.ranges)); State.toggles = JSON.parse(JSON.stringify(sc.toggles)); renderFilterPanel(); }
+  }));
+}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  document.getElementById("cfgPsxUrl").value = DataConfig.psxBaseUrl;
+  document.getElementById("cfgScsUrl").value = DataConfig.scsBaseUrl;
+  const aliasEl = document.getElementById("aliasPreview");
+  aliasEl.textContent = Object.keys(ALIAS_MAP).slice(0,18).map(k=> k+": "+ALIAS_MAP[k].join(", ")).join("\n") + "\n… (all "+Object.keys(ALIAS_MAP).length+" fields mapped)";
+}
+
+/* ---------- stock detail modal ---------- */
+let detailRangeDays = 365;
+function openDetail(id){
+  const s = State.stocks.find(x=>x._id===id);
+  if(!s) return;
+  document.getElementById("detailSymbol").textContent = s.symbol || "?";
+  document.getElementById("detailCompany").textContent = s.company || "";
+  const meta = scoreClass(s._score.total);
+
+  const reasons = buildReasons(s);
+  const risks = s._flags.length ? s._flags : ["No red flags detected from the fields provided."];
+
+  const body = document.getElementById("detailBody");
+  body.innerHTML = `
+    <div class="detail-hero">
+      <div>
+        <div class="px">${fmt(s.price,2)} <span class="${changeClass(s.change1d)}" style="font-size:16px;">${changeArrow(s.change1d)} ${fmtPct(s.change1d)}</span></div>
+        <div style="color:var(--text-muted);font-size:12.5px;margin-top:4px;">${s.sector||"Sector N/A"} · 52W ${fmt(s.week52Low,2)}–${fmt(s.week52High,2)}</div>
+      </div>
+      <div style="text-align:right;">
+        <span class="badge ${meta.cls}" style="font-size:15px;padding:6px 12px;">${s._score.total!==null?s._score.total.toFixed(1):"N/A"} ${meta.label}</span>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${s._score.incomplete? "⚠️ INCOMPLETE DATA · "+s._score.coverage+"% coverage" : s._score.coverage+"% data coverage"}</div>
+      </div>
+    </div>
+
+    <div class="flagbar">${s._flags.map(f=>`<span class="flag-pill">⚠ ${f}</span>`).join("")}</div>
+
+    <div class="tabs-row" id="detailTabs">
+      <div class="t active" data-tab="overview">Overview</div>
+      <div class="t" data-tab="financials">Financials</div>
+      <div class="t" data-tab="technical">Technical</div>
+      <div class="t" data-tab="ownership">Ownership</div>
+      <div class="t" data-tab="charts">Charts</div>
+      <div class="t" data-tab="why">Why / Risks</div>
+    </div>
+    <div id="detailTabBody"></div>
+  `;
+
+  function renderTab(tab){
+    const wrap = document.getElementById("detailTabBody");
+    if(tab==="overview"){
+      wrap.innerHTML = kvGrid([
+        ["P/E", fmt(s.pe,1)], ["Forward P/E", fmt(s.forwardPe,1)], ["P/B", fmt(s.pb,2)], ["PEG", fmt(s.peg,2)],
+        ["EV/EBITDA", fmt(s.evEbitda,1)], ["Dividend Yield", fmtPct(s.divYield)],
+        ["ROE", fmtPct(s.roe)], ["ROA", fmtPct(s.roa)], ["Net Margin", fmtPct(s.netMargin)],
+        ["EPS", fmt(s.eps,2)], ["Sector P/E", fmt(s.sectorAvgPe,1)]
+      ]);
+    } else if(tab==="financials"){
+      wrap.innerHTML = kvGrid([
+        ["Revenue Growth YoY", fmtPct(s.revGrowthYoY)], ["Revenue CAGR 3Y", fmtPct(s.revCagr3y)], ["Revenue CAGR 5Y", fmtPct(s.revCagr5y)],
+        ["Profit Growth YoY", fmtPct(s.profitGrowthYoY)], ["Profit CAGR 3Y", fmtPct(s.profitCagr3y)], ["Profit CAGR 5Y", fmtPct(s.profitCagr5y)],
+        ["EPS Growth YoY", fmtPct(s.epsGrowthYoY)], ["EPS CAGR 3Y", fmtPct(s.epsCagr3y)],
+        ["Debt/Equity", fmt(s.debtEquity,2)], ["Current Ratio", fmt(s.currentRatio,2)], ["Quick Ratio", fmt(s.quickRatio,2)],
+        ["Interest Coverage", fmt(s.interestCoverage,2)], ["Cash", fmt(s.cash,0)],
+        ["OCF", fmt(s.ocf,0)], ["FCF", fmt(s.fcf,0)], ["OCF Growth", fmtPct(s.ocfGrowth)], ["FCF Growth", fmtPct(s.fcfGrowth)],
+        ["OCF/Net Profit", fmt(s.ocfToNetProfit,2)], ["Payout Ratio", fmtPct(s.payoutRatio)], ["Dividend Growth", fmtPct(s.divGrowth)]
+      ]);
+    } else if(tab==="technical"){
+      wrap.innerHTML = kvGrid([
+        ["RSI", fmt(s.rsi,1)], ["MACD", fmt(s.macd,2)], ["Volume", fmt(s.volume,0)], ["Avg Volume", fmt(s.avgVolume,0)],
+        ["20 DMA", fmt(s.dma20,2)], ["50 DMA", fmt(s.dma50,2)], ["100 DMA", fmt(s.dma100,2)], ["200 DMA", fmt(s.dma200,2)],
+        ["1W Change", fmtPct(s.change1w)], ["1M Change", fmtPct(s.change1m)], ["3M Change", fmtPct(s.change3m)],
+        ["6M Change", fmtPct(s.change6m)], ["1Y Change", fmtPct(s.change1y)],
+        ["52W High", fmt(s.week52High,2)], ["52W Low", fmt(s.week52Low,2)]
+      ]);
+    } else if(tab==="ownership"){
+      wrap.innerHTML = kvGrid([
+        ["Sponsor Holding", fmtPct(s.sponsorHolding)], ["Institutional Holding", fmtPct(s.institutionalHolding)],
+        ["Free Float", fmtPct(s.freeFloat)], ["Insider/Director Holding", fmtPct(s.insiderHolding)]
+      ]);
+    } else if(tab==="charts"){
+      const metrics = [["price","Price"],["revenue","Revenue"],["profit","Profit"],["eps","EPS"],["roe","ROE"],["ocf","Operating Cash Flow"],["fcf","Free Cash Flow"]];
+      if(!s.history){
+        wrap.innerHTML = '<div class="empty-state" style="padding:30px;"><div>No historical series imported for this stock.</div><div style="font-size:11.5px;margin-top:6px;">Import via JSON with a "history" object to enable charts.</div></div>';
+      } else {
+        wrap.innerHTML = `
+          <div class="chart-range" id="chartRanges">
+            ${["1M","3M","6M","1Y","3Y","5Y"].map(r=>`<div class="chip ${r==='1Y'?'active':''}" data-range="${r}">${r}</div>`).join("")}
+          </div>
+          ${metrics.filter(m=> s.history[m[0]] && s.history[m[0]].length).map(m=>`
+            <div style="margin-bottom:14px;">
+              <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:4px;">${m[1]}</div>
+              <canvas class="chart" data-metric="${m[0]}" height="180"></canvas>
+            </div>`).join("")}
+        `;
+        const drawAll = (range)=>{
+          document.querySelectorAll('[data-metric]').forEach(cv=> drawSeries(cv, s.history, cv.dataset.metric, range));
+        };
+        wrap.querySelectorAll("[data-range]").forEach(chip=> chip.addEventListener("click", ()=>{
+          wrap.querySelectorAll("[data-range]").forEach(c=>c.classList.remove("active")); chip.classList.add("active");
+          drawAll(chip.dataset.range);
+        }));
+        drawAll("1Y");
+      }
+    } else if(tab==="why"){
+      wrap.innerHTML = `
+        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;margin:10px 0 4px;">Why this stock ranked ${meta.label.replace(/^[^\s]+\s/,"")}</div>
+        <ul class="reason-list">${reasons.map(r=>`<li>✅ ${r}</li>`).join("") || "<li>Not enough data to determine strengths.</li>"}</ul>
+        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;margin:16px 0 4px;">Top risks</div>
+        <ul class="reason-list">${risks.slice(0,5).map(r=>`<li>⚠️ ${r}</li>`).join("")}</ul>
+      `;
+    }
+  }
+  document.getElementById("detailTabs").querySelectorAll(".t").forEach(t=> t.addEventListener("click", ()=>{
+    document.getElementById("detailTabs").querySelectorAll(".t").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active"); renderTab(t.dataset.tab);
+  }));
+  renderTab("overview");
+  document.getElementById("detailModal").classList.remove("hidden");
+}
+
+function kvGrid(pairs){
+  return `<div class="kv-grid">${pairs.map(p=>`<div class="kv"><div class="k">${p[0]}</div><div class="v">${p[1]}</div></div>`).join("")}</div>`;
+}
+
+function buildReasons(s){
+  const r = [];
+  if(s.revGrowthYoY!==null && s.revGrowthYoY>15) r.push(`Revenue growing ${s.revGrowthYoY.toFixed(1)}% YoY`);
+  if(s.profitGrowthYoY!==null && s.profitGrowthYoY>15) r.push(`Profit growing ${s.profitGrowthYoY.toFixed(1)}% YoY`);
+  if(s.epsGrowthYoY!==null && s.epsGrowthYoY>15) r.push(`EPS growing ${s.epsGrowthYoY.toFixed(1)}% YoY`);
+  if(s.roe!==null && s.roe>18) r.push(`Strong ROE of ${s.roe.toFixed(1)}%`);
+  if(s.ocfToNetProfit!==null && s.ocfToNetProfit>1) r.push(`Cash flow conversion above net profit (${s.ocfToNetProfit.toFixed(2)}x)`);
+  if(s.debtEquity!==null && s.debtEquity<0.5) r.push(`Low leverage — Debt/Equity of ${s.debtEquity.toFixed(2)}`);
+  if(s.pe!==null && s.sectorAvgPe!==null && s.pe<s.sectorAvgPe) r.push(`Trading below sector-average P/E (${s.pe.toFixed(1)} vs ${s.sectorAvgPe.toFixed(1)})`);
+  if(s.divYield!==null && s.divYield>4) r.push(`Attractive dividend yield of ${s.divYield.toFixed(1)}%`);
+  if(TECH_CONDITIONS.aboveDma50(s) && TECH_CONDITIONS.aboveDma200(s)) r.push(`Price trending above both 50 and 200 DMA`);
+  if(s.sponsorHolding!==null && s.sponsorHolding>50) r.push(`High sponsor/promoter holding of ${s.sponsorHolding.toFixed(1)}%`);
+  return r.slice(0,5);
+}
+
+// lightweight canvas line chart, no external library
+function drawSeries(canvas, history, metricKey, range){
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 600, h = canvas.clientHeight || 180;
+  canvas.width = w*dpr; canvas.height = h*dpr; ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+
+  const rangeToCount = {"1M":22,"3M":66,"6M":132,"1Y":252,"3Y":756,"5Y":1260};
+  let series = history[metricKey] || [];
+  const dates = history.dates || [];
+  let n = Math.min(series.length, rangeToCount[range] || series.length);
+  series = series.slice(-n);
+  const dSlice = dates.slice(-n);
+  if(series.length<2){ ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-faint'); ctx.font="12px sans-serif"; ctx.fillText("Not enough points for this range", 10, h/2); return; }
+
+  const min = Math.min(...series), max = Math.max(...series);
+  const pad = 18;
+  const xStep = (w-2*pad)/(series.length-1);
+  const yFor = v => h-pad - ( (v-min)/((max-min)||1) )*(h-2*pad);
+
+  const style = getComputedStyle(document.body);
+  const rising = series[series.length-1] >= series[0];
+  ctx.strokeStyle = rising ? style.getPropertyValue('--green') : style.getPropertyValue('--red');
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  series.forEach((v,i)=>{ const x=pad+i*xStep, y=yFor(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.stroke();
+
+  // fill
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, rising ? "rgba(53,201,140,.18)" : "rgba(239,95,114,.18)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.lineTo(pad+(series.length-1)*xStep, h-pad); ctx.lineTo(pad, h-pad); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  ctx.fillStyle = style.getPropertyValue('--text-muted'); ctx.font = "10px monospace";
+  ctx.fillText(min.toFixed(2), 4, h-4);
+  ctx.fillText(max.toFixed(2), 4, 12);
+}
+
+/* ---------- import ---------- */
+let pendingImport = null;
+function handleImportFile(file){
+  const reader = new FileReader();
+  reader.onload = e=>{
+    let parsed;
+    try{
+      if(file.name.toLowerCase().endsWith(".json")){
+        parsed = normalizeJson(JSON.parse(e.target.result));
+      } else {
+        const rows = parseCSV(e.target.result);
+        parsed = normalizeCsvRows(rows);
+      }
+    } catch(err){
+      alert("Could not parse file: " + err.message);
+      return;
+    }
+    pendingImport = parsed;
+    showMappingPreview(parsed, file.name);
+  };
+  reader.readAsText(file);
+}
+
+function showMappingPreview(parsed, filename){
+  document.getElementById("mappingPreview").classList.remove("hidden");
+  const mapTable = document.getElementById("mapTable");
+  const mappedFields = Object.keys(parsed.mapping);
+  const unmapped = CANONICAL_FIELDS.filter(f=> !mappedFields.includes(f) && !["receivablesGrowth","equityGrowth","debtGrowth","marginTrend","sharesOutstandingGrowth","auditorNote","nonRecurringIncomeFlag","historicalPe","sectorAvgPe"].includes(f));
+  mapTable.innerHTML = mappedFields.map(f=>`<tr><td class="mono">${f}</td><td>← "${parsed.mapping[f]}"</td></tr>`).join("");
+  let missingData=0;
+  parsed.stocks.forEach(s=> CANONICAL_FIELDS.forEach(f=>{ if(s[f]===null) missingData++; }));
+  document.getElementById("importSummary").textContent =
+    `${filename}: ${parsed.stocks.length} stocks detected, ${mappedFields.length}/${CANONICAL_FIELDS.length} fields mapped. Unmapped fields will show as N/A.`;
+  document.getElementById("confirmImport").classList.remove("hidden");
+  document.getElementById("confirmCount").textContent = "(" + parsed.stocks.length + ")";
+}
+
+function commitImport(){
+  if(!pendingImport) return;
+  State.stocks = pendingImport.stocks;
+  State.dataSource = "File import";
+  State.lastUpdated = new Date();
+  recomputeDerived();
+  refreshStatusBar();
+  populateSectorFilter();
+  closeImportModal();
+  setView(State.view);
+}
+
+function refreshStatusBar(){
+  const has = State.stocks.length>0;
+  document.getElementById("dataDot").className = "dot " + (has?"ok":"");
+  document.getElementById("dataStatusText").textContent = has ? "Data loaded" : "No data loaded";
+  document.getElementById("dataSourceLabel").textContent = State.dataSource || "—";
+  document.getElementById("dataCountLabel").textContent = State.stocks.length;
+  document.getElementById("dataUpdatedLabel").textContent = State.lastUpdated ? State.lastUpdated.toLocaleString() : "—";
+  let missing=0;
+  State.stocks.forEach(s=> CANONICAL_FIELDS.forEach(f=>{ if(s[f]===null) missing++; }));
+  document.getElementById("dataMissingLabel").textContent = missing;
+}
+
+function populateSectorFilter(){
+  const sel = document.getElementById("sectorFilter");
+  const sectors = Array.from(new Set(State.stocks.map(s=>s.sector).filter(Boolean))).sort();
+  sel.innerHTML = '<option value="">All Sectors</option>' + sectors.map(s=>`<option value="${s}">${s}</option>`).join("");
+}
+
+/* ---------- CSV export ---------- */
+function exportCsv(){
+  const list = applyPipeline();
+  if(!list.length){ alert("No rows to export."); return; }
+  const cols = DEFAULT_COLUMNS.filter(c=> State.visibleCols.includes(c.key) && c.key!=="rank");
+  const header = ["Rank", ...cols.map(c=>c.label)];
+  const lines = [header.join(",")];
+  list.forEach((s,i)=>{
+    const vals = cols.map(c=>{
+      if(c.key==="cheetahScore") return s._score.total!==null? s._score.total.toFixed(1) : "N/A";
+      if(c.key==="trend") return (TECH_CONDITIONS.aboveDma50(s)&&TECH_CONDITIONS.aboveDma200(s))?"Uptrend":"Weak/Down";
+      if(c.key==="risk") return (s._flags?s._flags.length:0);
+      const v = s[c.key];
+      return v===null||v===undefined ? "N/A" : v;
+    });
+    lines.push([i+1, ...vals].map(v=> typeof v==="string" && v.includes(",") ? `"${v}"` : v).join(","));
+  });
+  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download = "psx-screener-export.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- columns panel ---------- */
+function renderColumnPanel(){
+  const el = document.getElementById("colList");
+  el.innerHTML = DEFAULT_COLUMNS.map(c=>`
+    <div class="toggle-row"><input type="checkbox" id="col_${c.key}" ${State.visibleCols.includes(c.key)?"checked":""} ${c.key==="symbol"?"disabled":""}>
+    <label for="col_${c.key}">${c.label}</label></div>`).join("");
+  el.querySelectorAll("input").forEach(cb=> cb.addEventListener("change", ()=>{
+    const key = cb.id.replace("col_","");
+    if(cb.checked){ if(!State.visibleCols.includes(key)) State.visibleCols.push(key); }
+    else { State.visibleCols = State.visibleCols.filter(k=>k!==key); }
+    renderTable();
+  }));
+}
+
+/* ============================================================
+   EVENT WIRING
+   ============================================================ */
+document.getElementById("navtabs").addEventListener("click", e=>{
+  const t = e.target.closest(".navtab"); if(t) setView(t.dataset.view);
+});
+document.getElementById("themeToggle").addEventListener("click", ()=>{
+  const html = document.documentElement;
+  html.setAttribute("data-theme", html.getAttribute("data-theme")==="dark"?"light":"dark");
+});
+document.getElementById("searchInput").addEventListener("input", e=>{ State.search = e.target.value; State.page=1; renderTable(); });
+document.getElementById("sectorFilter").addEventListener("change", e=>{ State.sector = e.target.value; State.page=1; renderTable(); });
+document.getElementById("btnResetFilters").addEventListener("click", ()=>{
+  State.ranges={}; State.toggles={}; State.sector=""; State.search=""; document.getElementById("searchInput").value=""; document.getElementById("sectorFilter").value="";
+  renderTable();
+});
+document.getElementById("prevPage").addEventListener("click", ()=>{ if(State.page>1){State.page--; renderTable();} });
+document.getElementById("nextPage").addEventListener("click", ()=>{ State.page++; renderTable(); });
+document.getElementById("pageSizeSel").addEventListener("change", e=>{ State.pageSize = parseInt(e.target.value); State.page=1; renderTable(); });
+document.getElementById("btnExportCsv").addEventListener("click", exportCsv);
+
+document.getElementById("btnOpenFilters").addEventListener("click", ()=>{
+  renderFilterPanel();
+  document.getElementById("filterOverlay").classList.remove("hidden");
+  document.getElementById("filterPanel").classList.remove("hidden");
+});
+function closeFilterPanel(){ document.getElementById("filterOverlay").classList.add("hidden"); document.getElementById("filterPanel").classList.add("hidden"); }
+document.getElementById("closeFilters").addEventListener("click", closeFilterPanel);
+document.getElementById("filterOverlay").addEventListener("click", closeFilterPanel);
+document.getElementById("btnApplyFilters").addEventListener("click", ()=>{ closeFilterPanel(); State.page=1; renderTable(); });
+document.getElementById("btnClearFilters").addEventListener("click", ()=>{ State.ranges={}; State.toggles={}; renderFilterPanel(); });
+document.getElementById("btnSaveScreen").addEventListener("click", ()=>{
+  const name = document.getElementById("saveScreenName").value.trim();
+  if(!name) return;
+  State.savedScreens.push({name, ranges: JSON.parse(JSON.stringify(State.ranges)), toggles: JSON.parse(JSON.stringify(State.toggles))});
+  document.getElementById("saveScreenName").value="";
+  renderFilterPanel();
+});
+
+document.getElementById("btnColumns").addEventListener("click", ()=>{
+  renderColumnPanel();
+  document.getElementById("colOverlay").classList.remove("hidden");
+  document.getElementById("colPanel").classList.remove("hidden");
+});
+function closeColPanel(){ document.getElementById("colOverlay").classList.add("hidden"); document.getElementById("colPanel").classList.add("hidden"); }
+document.getElementById("closeCols").addEventListener("click", closeColPanel);
+document.getElementById("colOverlay").addEventListener("click", closeColPanel);
+
+function openImportModal(){ document.getElementById("importModal").classList.remove("hidden"); }
+function closeImportModal(){
+  document.getElementById("importModal").classList.add("hidden");
+  document.getElementById("mappingPreview").classList.add("hidden");
+  document.getElementById("confirmImport").classList.add("hidden");
+  document.getElementById("fileInput").value = "";
+  pendingImport = null;
+}
+document.getElementById("btnImport").addEventListener("click", openImportModal);
+document.getElementById("btnImportEmpty").addEventListener("click", openImportModal);
+document.getElementById("closeImport").addEventListener("click", closeImportModal);
+document.getElementById("cancelImport").addEventListener("click", closeImportModal);
+document.getElementById("confirmImport").addEventListener("click", commitImport);
+document.getElementById("dropzone").addEventListener("click", ()=> document.getElementById("fileInput").click());
+document.getElementById("fileInput").addEventListener("change", e=>{ if(e.target.files[0]) handleImportFile(e.target.files[0]); });
+document.getElementById("dropzone").addEventListener("dragover", e=>{ e.preventDefault(); });
+document.getElementById("dropzone").addEventListener("drop", e=>{ e.preventDefault(); if(e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]); });
+
+document.getElementById("closeDetail").addEventListener("click", ()=> document.getElementById("detailModal").classList.add("hidden"));
+document.getElementById("detailModal").addEventListener("click", e=>{ if(e.target.id==="detailModal") document.getElementById("detailModal").classList.add("hidden"); });
+
+document.getElementById("btnLiveFetch").addEventListener("click", async ()=>{
+  if(!DataConfig.isLiveConfigured()){ alert("No live API/proxy URL configured yet. Add one under Settings, or use CSV/JSON import."); setView("settings"); return; }
+  try{
+    const data = await (DataConfig.psxBaseUrl ? DataFetching.fetchLivePsx() : DataFetching.fetchLiveScs());
+    const parsed = normalizeJson(data);
+    State.stocks = parsed.stocks; State.dataSource = "Live API"; State.lastUpdated = new Date();
+    recomputeDerived(); refreshStatusBar(); populateSectorFilter(); setView(State.view);
+  } catch(err){ alert("Live fetch failed: " + err.message); }
+});
+document.getElementById("btnSaveCfg").addEventListener("click", ()=>{
+  DataConfig.psxBaseUrl = document.getElementById("cfgPsxUrl").value.trim();
+  DataConfig.scsBaseUrl = document.getElementById("cfgScsUrl").value.trim();
+  alert("Configuration saved for this session.");
+});
+
+/* ---------- init ---------- */
+refreshStatusBar();
+setView("dashboard");
+</script>
+</body>
+</html>
