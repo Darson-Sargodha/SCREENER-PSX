@@ -325,6 +325,10 @@
       .adv-legend strong { color:var(--ink); font-weight:600; }
       .adv-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
       .adv-wrap { position:relative; height:460px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#131722; }
+      .adv-pill-layer { position:absolute; inset:0; z-index:5; overflow:hidden; pointer-events:none; }
+      .adv-pill { position:absolute; font-size:11.5px; font-weight:800; letter-spacing:.05em; line-height:1.3; color:#fff; padding:3px 8px; border-radius:999px; white-space:nowrap; box-shadow:0 1px 5px rgba(0,0,0,.5); }
+      .adv-pill.buy { background:#16a34a; transform:translate(-50%, 9px); }
+      .adv-pill.sell { background:#dc2626; transform:translate(-50%, calc(-100% - 9px)); }
       .adv-note { margin:10px 0 0; font-size:13px; color:var(--ink-2); }
       .adv-signals-title { margin:18px 0 8px; font-size:16px; font-weight:800; }
       .adv-signals { list-style:none; margin:0; padding:0; }
@@ -1650,7 +1654,11 @@
       var ADV_NO_BASELINE = ["ABHI", "ASICR2", "CWHC", "JAZZSURE", "NGLEL", "PINLR", "UVICR1"];
       var advTF = "1D", advSym = "OGDC", advReq = 0;
       var advChart = null, advCandle = null, advVol = null, advFast = null, advSlow = null;
-      var advMarkers = [];
+      // On-chart signal pills are drawn in a DOM overlay above the chart canvas
+      // (canvas markers proved unreliable). advSignalsAll holds the signals in
+      // the rendered range; advBarMap maps bar time -> { high, low } so pills
+      // can be repositioned on scroll / zoom without recomputing the signals.
+      var advSignalsAll = [], advBarMap = {}, advOverlayEl = null;
 
       function advInUniverse(sym) {
         return Object.prototype.hasOwnProperty.call(BASELINE_1D, sym) || ADV_NO_BASELINE.indexOf(sym) !== -1;
@@ -1746,13 +1754,35 @@
       }
       function advDestroy() {
         if (advChart) { try { advChart.remove(); } catch (e) { /* already gone */ } }
-        advChart = null; advCandle = null; advVol = null; advFast = null; advSlow = null; advMarkers = [];
+        advChart = null; advCandle = null; advVol = null; advFast = null; advSlow = null;
+        advSignalsAll = []; advBarMap = {}; advOverlayEl = null;
       }
       function advApplyToggle() {
         var on = document.getElementById("advIndToggle").checked;
         if (advFast) advFast.applyOptions({ visible: on });
         if (advSlow) advSlow.applyOptions({ visible: on });
-        if (advCandle) advCandle.setMarkers(on ? advMarkers : []);
+        if (on) advRenderPills();
+        else if (advOverlayEl) advOverlayEl.innerHTML = "";
+      }
+      // Draw the BUY / SELL pills in the DOM overlay above the chart canvas:
+      // a BUY pill sits just below its bar's low, a SELL pill just above its
+      // bar's high (the offset is in the .adv-pill CSS transform). Only
+      // signals inside the currently visible range are drawn.
+      function advRenderPills() {
+        if (!advChart || !advCandle || !advOverlayEl) return;
+        if (!document.getElementById("advIndToggle").checked) { advOverlayEl.innerHTML = ""; return; }
+        var html = "";
+        for (var i = 0; i < advSignalsAll.length; i++) {
+          var sg = advSignalsAll[i];
+          var bar = advBarMap[sg.time];
+          if (!bar) continue;
+          var x = advChart.timeScale().timeToCoordinate(sg.time);
+          if (x === null || x === undefined) continue;
+          var y = advCandle.priceToCoordinate(sg.type === "BUY" ? bar.low : bar.high);
+          if (y === null || y === undefined) continue;
+          html += '<span class="adv-pill ' + (sg.type === "BUY" ? "buy" : "sell") + '" style="left:' + x.toFixed(1) + "px;top:" + y.toFixed(1) + 'px">' + sg.type + "</span>";
+        }
+        advOverlayEl.innerHTML = html;
       }
       function advRender(sym, dailyBars, baked) {
         var bars = (advTF === "1W") ? advToWeekly(dailyBars) : dailyBars.slice();
@@ -1761,15 +1791,13 @@
         var slow = advAvgSeries(closes, 26);
         // Signal markers over the full series: fast moving from below the slow
         // average to above it is a BUY; the reverse is a SELL.
-        var allMarkers = [], signals = [];
+        var signals = [];
         for (var i = 1; i < bars.length; i++) {
           if (fast[i] === null || slow[i] === null || fast[i - 1] === null || slow[i - 1] === null) continue;
           var pd = fast[i - 1] - slow[i - 1], cd = fast[i] - slow[i];
           if (pd < 0 && cd > 0) {
-            allMarkers.push({ time: bars[i].time, position: "belowBar", color: "#22c55e", shape: "arrowUp", text: "BUY" });
             signals.push({ time: bars[i].time, type: "BUY" });
           } else if (pd > 0 && cd < 0) {
-            allMarkers.push({ time: bars[i].time, position: "aboveBar", color: "#ff6b5e", shape: "arrowDown", text: "SELL" });
             signals.push({ time: bars[i].time, type: "SELL" });
           }
         }
@@ -1779,7 +1807,9 @@
         var start = Math.max(0, bars.length - limit);
         var viewBars = bars.slice(start);
         var firstT = viewBars.length ? viewBars[0].time : 0;
-        advMarkers = allMarkers.filter(function (mk) { return mk.time >= firstT; });
+        advSignalsAll = signals.filter(function (sg) { return sg.time >= firstT; });
+        advBarMap = {};
+        viewBars.forEach(function (b) { advBarMap[b.time] = { high: b.high, low: b.low }; });
         var fastData = [], slowData = [];
         for (var j = start; j < bars.length; j++) {
           if (fast[j] !== null) fastData.push({ time: bars[j].time, value: fast[j] });
@@ -1826,6 +1856,12 @@
         advSlow = advChart.addLineSeries({ color: "#f472b6", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
         advSlow.setData(slowData);
         advChart.timeScale().fitContent();
+        // DOM overlay for the signal pills, layered above the chart canvas;
+        // repositioned whenever the visible range changes (scroll / zoom).
+        advOverlayEl = document.createElement("div");
+        advOverlayEl.className = "adv-pill-layer";
+        wrap.appendChild(advOverlayEl);
+        advChart.timeScale().subscribeVisibleLogicalRangeChange(advRenderPills);
         advApplyToggle();
         // Legend: symbol, last close, current Fast / Slow values
         var lastBar = bars[bars.length - 1];
@@ -1914,7 +1950,7 @@
       window.addEventListener("resize", function () {
         if (!advChart) return;
         var wrap = document.getElementById("advChartBox");
-        if (wrap && wrap.clientWidth && wrap.clientHeight) advChart.resize(wrap.clientWidth, wrap.clientHeight);
+        if (wrap && wrap.clientWidth && wrap.clientHeight) { advChart.resize(wrap.clientWidth, wrap.clientHeight); advRenderPills(); }
       });
       // Detail window tie-in: jump from a stock's detail window into Advance Charting
       document.getElementById("dAdvBtn").addEventListener("click", function () {
