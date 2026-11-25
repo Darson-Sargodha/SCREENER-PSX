@@ -544,17 +544,20 @@
         .manual-row .btn-main { flex:1 1 100%; justify-content:center; }
         .tf-btn { flex: 1 1 30%; }
         .verdict .v-sym { text-align:left; }
-        table, thead, tbody, tr, td { display: block; width: 100%; }
-        thead { display: none; }
-        tbody tr { padding: 12px 14px; }
-        tbody tr + tr { border-top: 1px solid var(--line); }
-        tbody tr td { border-top: 0 !important; padding: 2px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 14px; text-align: right; }
-        tbody tr td::before {
+        /* Scoped to .table-card: these reflow rules are for the screener data
+           tables only. Left unscoped they also hit the chart library's
+           internal layout table and break its pane / price-scale columns. */
+        .table-card table, .table-card thead, .table-card tbody, .table-card tr, .table-card td { display: block; width: 100%; }
+        .table-card thead { display: none; }
+        .table-card tbody tr { padding: 12px 14px; }
+        .table-card tbody tr + tr { border-top: 1px solid var(--line); }
+        .table-card tbody tr td { border-top: 0 !important; padding: 2px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 14px; text-align: right; }
+        .table-card tbody tr td::before {
           content: attr(data-label); font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
           color: var(--ink-2); font-weight: 700; text-align: left;
         }
-        tbody tr td.sym { font-size: 18px; padding-bottom: 6px; }
-        tbody tr td.sym::before { content: "Symbol"; align-self: center; }
+        .table-card tbody tr td.sym { font-size: 18px; padding-bottom: 6px; }
+        .table-card tbody tr td.sym::before { content: "Symbol"; align-self: center; }
       }
     </style>
     <script>
@@ -1456,7 +1459,7 @@
       // never depends on an outside service; a live Yahoo Finance fetch through a
       // proxy then runs in the background and only replaces the candles when it
       // returns newer bars.
-      var lwChart = null, lwSeries = null, lwLines = [], chartReq = 0, lwLibPromise = null, chartBars = null;
+      var lwChart = null, lwSeries = null, lwLines = [], chartReq = 0, lwLibPromise = null, chartBars = null, lwRO = null;
       var YAHOO_TF = {
         "1D":  { range: "6mo", interval: "1d" },
         "1W":  { range: "2y",  interval: "1wk" },
@@ -1552,8 +1555,17 @@
           });
       }
       function destroyChart() {
+        if (lwRO) { try { lwRO.disconnect(); } catch (e) { /* observer already gone */ } lwRO = null; }
         if (lwChart) { try { lwChart.remove(); } catch (e) { /* already gone */ } }
         lwChart = null; lwSeries = null; lwLines = []; chartBars = null;
+      }
+      // Re-measure the detail chart against its container: the modal panel can
+      // settle (open animation, phone chrome, rotation) after the chart was
+      // created, and the chart must always fill the box with its price scale.
+      function syncDetailChartSize() {
+        if (!lwChart) return;
+        var wrap = document.getElementById("tvChart");
+        if (wrap && wrap.clientWidth && wrap.clientHeight) lwChart.resize(wrap.clientWidth, wrap.clientHeight);
       }
       function drawLevelLines() {
         if (!lwSeries || !detailLevels || !window.LightweightCharts) return;
@@ -1594,7 +1606,7 @@
             vertLines: { color: "rgba(255,255,255,.06)" },
             horzLines: { color: "rgba(255,255,255,.06)" }
           },
-          rightPriceScale: { borderColor: "rgba(255,255,255,.18)" },
+          rightPriceScale: { visible: true, borderColor: "rgba(255,255,255,.18)" },
           timeScale: { borderColor: "rgba(255,255,255,.18)", timeVisible: curTF !== "1D" && curTF !== "1W" }
         });
         lwSeries = lwChart.addCandlestickSeries({
@@ -1607,6 +1619,16 @@
         }));
         lwChart.timeScale().fitContent();
         drawLevelLines();
+        // Keep the chart matched to its container: observe the box (the modal
+        // panel can change size after opening) and re-measure once the layout
+        // has settled, so the plot fills the box and the price scale shows.
+        if (typeof ResizeObserver !== "undefined") {
+          if (lwRO) lwRO.disconnect();
+          lwRO = new ResizeObserver(syncDetailChartSize);
+          lwRO.observe(wrap);
+        }
+        requestAnimationFrame(syncDetailChartSize);
+        setTimeout(syncDetailChartSize, 250);
       }
       function loadStockChart(sym) {
         var wrap = document.getElementById("tvChart");
@@ -1652,11 +1674,8 @@
             showChartMsg("The chart for <strong>" + sym + "</strong> couldn&rsquo;t be loaded. Check your internet connection and try again, or view this stock on TradingView with the button below.");
           });
       }
-      window.addEventListener("resize", function () {
-        if (!lwChart) return;
-        var wrap = document.getElementById("tvChart");
-        if (wrap && wrap.clientWidth && wrap.clientHeight) lwChart.resize(wrap.clientWidth, wrap.clientHeight);
-      });
+      window.addEventListener("resize", syncDetailChartSize);
+      window.addEventListener("orientationchange", function () { setTimeout(syncDetailChartSize, 100); });
       function openDetail(rec, side, label) {
         if (!rec || !rec.s) return;
         detailRec = rec; detailSide = side;
@@ -1726,7 +1745,7 @@
       // lines and the BUY / SELL markers match the screener's own readings.
       var ADV_NO_BASELINE = ["ABHI", "ASICR2", "CWHC", "JAZZSURE", "NGLEL", "PINLR", "UVICR1"];
       var advTF = "1D", advSym = "OGDC", advReq = 0;
-      var advChart = null, advCandle = null, advVol = null, advFast = null, advSlow = null;
+      var advChart = null, advCandle = null, advVol = null, advFast = null, advSlow = null, advRO = null;
       // On-chart signal pills are drawn in a DOM overlay above the chart canvas
       // (canvas markers proved unreliable). advSignalsAll holds the signals in
       // the rendered range; advBarMap maps bar time -> { high, low } so pills
@@ -1869,6 +1888,7 @@
         return d.getUTCDate() + " " + months[d.getUTCMonth()] + " " + d.getUTCFullYear();
       }
       function advDestroy() {
+        if (advRO) { try { advRO.disconnect(); } catch (e) { /* observer already gone */ } advRO = null; }
         if (advChart) { try { advChart.remove(); } catch (e) { /* already gone */ } }
         advChart = null; advCandle = null; advVol = null; advFast = null; advSlow = null;
         advSignalsAll = []; advBarMap = {}; advOverlayEl = null;
@@ -1950,7 +1970,7 @@
             vertLines: { color: "rgba(255,255,255,.06)" },
             horzLines: { color: "rgba(255,255,255,.06)" }
           },
-          rightPriceScale: { borderColor: "rgba(255,255,255,.18)" },
+          rightPriceScale: { visible: true, borderColor: "rgba(255,255,255,.18)" },
           timeScale: { borderColor: "rgba(255,255,255,.18)" }
         });
         advCandle = advChart.addCandlestickSeries({
@@ -1985,11 +2005,19 @@
         advChart.timeScale().subscribeVisibleLogicalRangeChange(advRenderPills);
         advChart.timeScale().fitContent();
         advApplyToggle();
+        // Keep the chart matched to its container: observe the box and
+        // re-measure once the layout has settled, so the plot always fills
+        // the full width of the box with the price scale visible beside it.
+        if (typeof ResizeObserver !== "undefined") {
+          if (advRO) advRO.disconnect();
+          advRO = new ResizeObserver(advSyncSize);
+          advRO.observe(wrap);
+        }
         // Deferred first renders: timeToCoordinate / priceToCoordinate only
         // return settled positions after the chart layout has been applied,
         // so render again on the next frame and once more shortly after.
-        requestAnimationFrame(advRenderPills);
-        setTimeout(advRenderPills, 150);
+        requestAnimationFrame(function () { advSyncSize(); });
+        setTimeout(function () { advSyncSize(); }, 150);
         // Legend: symbol, last close, current Fast / Slow values
         var lastBar = bars[bars.length - 1];
         var fLast = fast[fast.length - 1], sLast = slow[slow.length - 1];
@@ -2089,11 +2117,15 @@
         });
       });
       document.getElementById("advIndToggle").addEventListener("change", advApplyToggle);
-      window.addEventListener("resize", function () {
+      // Re-measure the Advance chart against its container and redraw the
+      // signal pills at the settled positions.
+      function advSyncSize() {
         if (!advChart) return;
         var wrap = document.getElementById("advChartBox");
         if (wrap && wrap.clientWidth && wrap.clientHeight) { advChart.resize(wrap.clientWidth, wrap.clientHeight); advRenderPills(); }
-      });
+      }
+      window.addEventListener("resize", advSyncSize);
+      window.addEventListener("orientationchange", function () { setTimeout(advSyncSize, 100); });
       // Detail window tie-in: jump from a stock's detail window into Advance Charting
       document.getElementById("dAdvBtn").addEventListener("click", function () {
         if (!detailRec || !detailRec.s) return;
