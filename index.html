@@ -1807,15 +1807,17 @@
         var start = Math.max(0, bars.length - limit);
         var viewBars = bars.slice(start);
         var firstT = viewBars.length ? viewBars[0].time : 0;
-        advSignalsAll = signals.filter(function (sg) { return sg.time >= firstT; });
-        advBarMap = {};
-        viewBars.forEach(function (b) { advBarMap[b.time] = { high: b.high, low: b.low }; });
         var fastData = [], slowData = [];
         for (var j = start; j < bars.length; j++) {
           if (fast[j] !== null) fastData.push({ time: bars[j].time, value: fast[j] });
           if (slow[j] !== null) slowData.push({ time: bars[j].time, value: slow[j] });
         }
         advDestroy();
+        // Assign AFTER advDestroy(): it resets both to empty, so the pill
+        // overlay would otherwise have no signals to draw.
+        advSignalsAll = signals.filter(function (sg) { return sg.time >= firstT; });
+        advBarMap = {};
+        viewBars.forEach(function (b) { advBarMap[b.time] = { high: b.high, low: b.low }; });
         var wrap = document.getElementById("advChartBox");
         wrap.innerHTML = "";
         advChart = LightweightCharts.createChart(wrap, {
