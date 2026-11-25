@@ -398,8 +398,15 @@
         display: inline-flex; align-items: center; justify-content: center;
       }
       .modal-close:hover { border-color: var(--red); color: var(--red); }
-      .tv-wrap { height: 440px; margin: 0 20px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #131722; }
-      .tv-wrap .tradingview-widget-container { height: 100%; width: 100%; }
+      .tv-wrap { position: relative; height: 440px; margin: 0 20px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #131722; }
+      .chart-msg {
+        height: 100%; display: flex; align-items: center; justify-content: center;
+        text-align: center; padding: 24px 28px; color: #c9d6e8; font-size: 14.5px; line-height: 1.6;
+      }
+      .tv-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 20px 0; }
+      .btn-tv { background: #2962ff; color: #ffffff; box-shadow: 0 6px 18px rgba(41, 98, 255, .32); }
+      .btn-tv:hover { filter: brightness(1.08); }
+      .btn-tv:active { transform: translateY(1px); }
       .setup-box { padding: 16px 20px 4px; }
       .setup-box h3 { margin: 0 0 10px; font-size: 16px; font-weight: 800; }
       .setup-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -420,6 +427,8 @@
         .modal-panel { border-radius: 18px 18px 0 0; max-height: 94vh; }
         .modal-head { padding: 16px 14px 12px; }
         .tv-wrap { height: 300px; margin: 0 14px; }
+        .tv-actions { margin: 12px 14px 0; }
+        .tv-actions .btn-tv { flex: 1 1 100%; justify-content: center; }
         .setup-box { padding: 14px 14px 2px; }
         .setup-grid { grid-template-columns: repeat(2, 1fr); }
         .modal-disclaimer { margin: 12px 14px 16px; }
@@ -696,7 +705,7 @@
       </footer>
     </main>
 
-    <!-- Stock detail window: TradingView chart + suggested Entry / Stop Loss / Targets -->
+    <!-- Stock detail window: price chart + suggested Entry / Stop Loss / Targets -->
     <div class="modal-overlay" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="dSym">
       <div class="modal-panel">
         <div class="modal-head">
@@ -714,6 +723,9 @@
           <button class="modal-close" id="detailClose" type="button" aria-label="Close stock detail">&times;</button>
         </div>
         <div class="tv-wrap" id="tvChart"></div>
+        <div class="tv-actions">
+          <a class="btn btn-tv" id="dTvLink" href="https://www.tradingview.com/chart/?symbol=PSX:OGDC" target="_blank" rel="noopener noreferrer">Open on TradingView &#8599;</a>
+        </div>
         <div class="setup-box">
           <h3>Suggested Setup</h3>
           <div class="setup-grid">
@@ -1262,8 +1274,8 @@
         });
       });
 
-      // ---------- Stock detail window (TradingView chart + suggested levels) ----------
-      var detailRec = null, detailSide = "BUY";
+      // ---------- Stock detail window (price chart + suggested levels) ----------
+      var detailRec = null, detailSide = "BUY", detailLevels = null;
       function computeLevels(price, atr, side) {
         var risk = (typeof atr === "number" && isFinite(atr) && atr > 0) ? 1.5 * atr : price * 0.02;
         var entry = price, sl, tp1, tp2;
@@ -1273,6 +1285,7 @@
       }
       function renderLevels(rec, side) {
         var lv = computeLevels(rec.p, rec.atr, side);
+        detailLevels = lv;
         document.getElementById("dEntry").textContent = "Rs " + fmtPrice(lv.entry);
         document.getElementById("dSL").textContent = "Rs " + fmtPrice(lv.sl);
         document.getElementById("dTP1").textContent = "Rs " + fmtPrice(lv.tp1);
@@ -1280,36 +1293,143 @@
         document.getElementById("dSLSub").textContent = "Risk Rs " + fmtPrice(lv.risk) + " / share";
         document.getElementById("dTP1Sub").textContent = "Reward Rs " + fmtPrice(Math.abs(lv.tp1 - lv.entry)) + " · R:R 1:2";
         document.getElementById("dTP2Sub").textContent = "Reward Rs " + fmtPrice(Math.abs(lv.tp2 - lv.entry)) + " · R:R 1:3";
+        drawLevelLines();
       }
-      function loadTvChart(sym) {
+      // ---------- Price chart (Lightweight Charts + Yahoo Finance OHLC) ----------
+      // PSX market data is not licensed for TradingView's embeddable widgets, so the
+      // chart is drawn with TradingView's open-source Lightweight Charts library from
+      // Yahoo Finance OHLC data instead; the "Open on TradingView" button links out
+      // to the full chart on tradingview.com, where every PSX symbol works.
+      var lwChart = null, lwSeries = null, lwLines = [], chartReq = 0, lwLibPromise = null;
+      var YAHOO_TF = {
+        "1D":  { range: "6mo", interval: "1d" },
+        "1W":  { range: "2y",  interval: "1wk" },
+        "4H":  { range: "1mo", interval: "60m", agg: 4 },
+        "1H":  { range: "1mo", interval: "60m" },
+        "15m": { range: "5d",  interval: "15m" }
+      };
+      function loadLwLib() {
+        if (window.LightweightCharts) return Promise.resolve();
+        if (lwLibPromise) return lwLibPromise;
+        lwLibPromise = new Promise(function (resolve, reject) {
+          var s = document.createElement("script");
+          s.type = "text/javascript";
+          s.async = true;
+          s.src = "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js";
+          s.onload = function () { resolve(); };
+          s.onerror = function () { lwLibPromise = null; reject(new Error("chart library failed to load")); };
+          document.head.appendChild(s);
+        });
+        return lwLibPromise;
+      }
+      function fetchCandles(sym) {
+        var cfg = YAHOO_TF[curTF] || YAHOO_TF["1D"];
+        var yUrl = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym + ".KA")
+          + "?range=" + cfg.range + "&interval=" + cfg.interval;
+        return fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(yUrl))
+          .then(function (r) { if (!r.ok) throw new Error("chart data request failed"); return r.json(); })
+          .then(function (wrapped) {
+            var data = JSON.parse(wrapped.contents);
+            var res = data && data.chart && data.chart.result && data.chart.result[0];
+            if (!res || !res.timestamp) return [];
+            var q = res.indicators && res.indicators.quote && res.indicators.quote[0];
+            if (!q) return [];
+            var bars = [];
+            for (var i = 0; i < res.timestamp.length; i++) {
+              var o = q.open[i], h = q.high[i], l = q.low[i], c = q.close[i];
+              if (o == null || h == null || l == null || c == null) continue;
+              bars.push({ time: res.timestamp[i], open: o, high: h, low: l, close: c, volume: (q.volume && q.volume[i]) || 0 });
+            }
+            if (cfg.agg) {
+              var out = [];
+              for (var j = 0; j < bars.length; j += cfg.agg) {
+                var grp = bars.slice(j, j + cfg.agg);
+                var hi = grp[0].high, lo = grp[0].low, vol = 0;
+                grp.forEach(function (b) { hi = Math.max(hi, b.high); lo = Math.min(lo, b.low); vol += b.volume || 0; });
+                out.push({ time: grp[0].time, open: grp[0].open, high: hi, low: lo, close: grp[grp.length - 1].close, volume: vol });
+              }
+              bars = out;
+            }
+            return bars;
+          });
+      }
+      function destroyChart() {
+        if (lwChart) { try { lwChart.remove(); } catch (e) { /* already gone */ } }
+        lwChart = null; lwSeries = null; lwLines = [];
+      }
+      function drawLevelLines() {
+        if (!lwSeries || !detailLevels || !window.LightweightCharts) return;
+        lwLines.forEach(function (ln) { try { lwSeries.removePriceLine(ln); } catch (e) { /* line already gone */ } });
+        lwLines = [];
+        var LS = LightweightCharts.LineStyle;
+        function add(price, color, style, title) {
+          if (typeof price !== "number" || !isFinite(price)) return;
+          lwLines.push(lwSeries.createPriceLine({
+            price: price, color: color, lineWidth: 1, lineStyle: style,
+            axisLabelVisible: true, title: title
+          }));
+        }
+        add(detailLevels.entry, "#e8f1fb", LS.Dashed, "Entry");
+        add(detailLevels.sl, "#ff6b5e", LS.Solid, "Stop Loss");
+        add(detailLevels.tp1, "#22c55e", LS.Solid, "TP1");
+        add(detailLevels.tp2, "#22c55e", LS.Dashed, "TP2");
+      }
+      function showChartMsg(html) {
         var wrap = document.getElementById("tvChart");
-        wrap.innerHTML = "";
-        var container = document.createElement("div");
-        container.className = "tradingview-widget-container";
-        var widget = document.createElement("div");
-        widget.className = "tradingview-widget-container__widget";
-        widget.style.height = "100%";
-        widget.style.width = "100%";
-        container.appendChild(widget);
-        wrap.appendChild(container);
-        var cfg = {
-          autosize: true,
-          symbol: "PSX:" + sym,
-          interval: TF_INTERVAL[curTF] || "D",
-          timezone: "Asia/Karachi",
-          theme: "dark",
-          style: "1",
-          locale: "en",
-          allow_symbol_change: false,
-          support_host: "https://www.tradingview.com"
-        };
-        var s = document.createElement("script");
-        s.type = "text/javascript";
-        s.async = true;
-        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-        s.innerHTML = JSON.stringify(cfg);
-        container.appendChild(s);
+        destroyChart();
+        wrap.innerHTML = '<div class="chart-msg"><div>' + html + "</div></div>";
       }
+      function loadStockChart(sym) {
+        var wrap = document.getElementById("tvChart");
+        destroyChart();
+        var req = ++chartReq;
+        wrap.innerHTML = '<div class="chart-msg"><div>Loading the ' + sym + " chart (" + TF_LABEL[curTF] + ")&hellip;</div></div>";
+        loadLwLib()
+          .then(function () { return fetchCandles(sym); })
+          .then(function (bars) {
+            if (req !== chartReq) return; // window closed or another stock opened meanwhile
+            if (!bars.length) {
+              showChartMsg("Chart data isn&rsquo;t available for <strong>" + sym + "</strong> in the chart feed right now. You can still view this stock on TradingView with the button below.");
+              return;
+            }
+            wrap.innerHTML = "";
+            lwChart = LightweightCharts.createChart(wrap, {
+              width: wrap.clientWidth,
+              height: wrap.clientHeight,
+              layout: {
+                background: { type: "solid", color: "#131722" },
+                textColor: "#c9d6e8",
+                fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
+                fontSize: 11
+              },
+              grid: {
+                vertLines: { color: "rgba(255,255,255,.06)" },
+                horzLines: { color: "rgba(255,255,255,.06)" }
+              },
+              rightPriceScale: { borderColor: "rgba(255,255,255,.18)" },
+              timeScale: { borderColor: "rgba(255,255,255,.18)", timeVisible: curTF !== "1D" && curTF !== "1W" }
+            });
+            lwSeries = lwChart.addCandlestickSeries({
+              upColor: "#38bdf8", downColor: "#ff6b5e",
+              wickUpColor: "#38bdf8", wickDownColor: "#ff6b5e",
+              borderVisible: false
+            });
+            lwSeries.setData(bars.map(function (b) {
+              return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
+            }));
+            lwChart.timeScale().fitContent();
+            drawLevelLines();
+          })
+          .catch(function () {
+            if (req !== chartReq) return;
+            showChartMsg("The chart for <strong>" + sym + "</strong> couldn&rsquo;t be loaded. Check your internet connection and try again, or view this stock on TradingView with the button below.");
+          });
+      }
+      window.addEventListener("resize", function () {
+        if (!lwChart) return;
+        var wrap = document.getElementById("tvChart");
+        if (wrap && wrap.clientWidth && wrap.clientHeight) lwChart.resize(wrap.clientWidth, wrap.clientHeight);
+      });
       function openDetail(rec, side, label) {
         if (!rec || !rec.s) return;
         detailRec = rec; detailSide = side;
@@ -1322,8 +1442,9 @@
         chgEl.textContent = fmtChg(rec.c);
         chgEl.className = "mono " + chgClass(rec.c);
         document.getElementById("dTf").textContent = TF_LABEL[curTF] + " timeframe · PSX:" + rec.s;
+        document.getElementById("dTvLink").href = "https://www.tradingview.com/chart/?symbol=PSX:" + rec.s;
         renderLevels(rec, side);
-        loadTvChart(rec.s);
+        loadStockChart(rec.s);
         document.getElementById("detailModal").classList.add("open");
         document.body.style.overflow = "hidden";
         // Records without ATR (e.g. the saved snapshot) get a live lookup so the
@@ -1352,6 +1473,8 @@
         }
       }
       function closeDetail() {
+        chartReq++;
+        destroyChart();
         document.getElementById("detailModal").classList.remove("open");
         document.getElementById("tvChart").innerHTML = "";
         document.body.style.overflow = "";
