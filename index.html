@@ -410,7 +410,8 @@
           <ul>
             <li><b>BUY:</b> EMA 9 (short) moves from below to above EMA 26 (long) — it was below before, now it is above.</li>
             <li><b>SELL:</b> EMA 9 crosses from above to below EMA 26.</li>
-            <li>To detect a fresh cross, live EMA values are compared with the previous saved values (baseline) — so only <b>new crossovers</b> are shown, not stocks already in a trend. The Daily baseline is from 23 Nov 2026; for other timeframes, the first scan in a session sets the baseline and crossovers appear from the next scan.</li>
+            <li>To detect a fresh cross, live EMA values are compared with the previous values — so only <b>new crossovers</b> are shown, not stocks already in a trend. The Daily baseline is from 23 Nov 2026. On the smaller timeframes (Weekly, 4H, 1H, 15m) the comparison is against the <b>previous bar's</b> EMA 9 / EMA 26, so a setup that formed on the latest bar is reported in the same scan.</li>
+            <li>On intraday timeframes the current bar is still forming while the market is open — a cross shown during the session is confirmed once that bar closes.</li>
             <li>A signal is confirmed when the bar for that timeframe closes — the final Daily signal is after the 3:30 PM close.</li>
             <li><b>Enhanced scan:</b> The scan now fetches the full PSX universe in pages, de-duplicates symbols, retries on failure, and reports coverage — so no listed stock is skipped because of a single-page limit.</li>
           </ul>
@@ -584,18 +585,20 @@
         var el = document.getElementById("baseInfo");
         if (curTF === "1D") {
           el.textContent = "Daily crossovers are compared against the saved baseline from 23 Nov 2026 (426 stocks covered).";
-        } else if (sessionBase[curTF]) {
-          el.textContent = TF_LABEL[curTF] + " baseline is set from the previous scan in this session — the baseline updates after every new scan, so crossovers are always compared with the previous scan.";
         } else {
-          el.textContent = "The first " + TF_LABEL[curTF] + " scan will set the baseline for this timeframe — crossovers will appear from the next scan.";
+          el.textContent = TF_LABEL[curTF] + " crossovers are checked against the previous bar's EMA values — a BUY or SELL setup that formed on the latest " + TF_LABEL[curTF] + " bar appears in a single scan, no second scan needed.";
         }
       }
 
       // --- Enhanced paginated fetch: fetches ALL pages so no stock is missed ---
       function fetchPage(suffix, start, end) {
+        var columns = ["name", "close", "change", "volume", "EMA9" + suffix, "EMA26" + suffix];
+        // Non-daily timeframes also fetch the PREVIOUS bar's EMAs (EMA9[1] / EMA26[1]),
+        // so a cross that formed on the latest bar is detected in a single scan.
+        if (suffix) { columns.push("EMA9[1]" + suffix, "EMA26[1]" + suffix); }
         var body = JSON.stringify({
           symbols: { query: { types: ["stock"] }, tickers: [] },
-          columns: ["name", "close", "change", "volume", "EMA9" + suffix, "EMA26" + suffix],
+          columns: columns,
           range: [start, end],
           markets: ["pakistan"],
           sort: { sortBy: "name", sortOrder: "asc" }
@@ -684,7 +687,7 @@
           var sym = (row.s || "").split(":")[1];
           if (!sym) return;
           var d = row.d || [];
-          var rec = { s: sym, p: numOr(d[1], 0), c: numOr(d[2], 0), v: numOr(d[3], 0), e9: d[4], e26: d[5] };
+          var rec = { s: sym, p: numOr(d[1], 0), c: numOr(d[2], 0), v: numOr(d[3], 0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7] };
           // Keep the record with EMA data if duplicate appears
           if (!snap[sym] || (typeof rec.e9==="number" && typeof snap[sym].e9!=="number")) snap[sym] = rec;
         });
@@ -714,15 +717,29 @@
           return m;
         }
 
-        if (!base) {
+        // Did TradingView return previous-bar EMAs for this timeframe?
+        var hasPrevBar = false;
+        if (curTF !== "1D") {
+          Object.keys(snap).forEach(function (sym) {
+            var r = snap[sym];
+            if (typeof r.pe9 === "number" && typeof r.pe26 === "number") hasPrevBar = true;
+          });
+        }
+
+        if (!base && !hasPrevBar) {
           baselineOnly = true;
           sessionBase[curTF] = currentSigns();
         } else {
           Object.keys(snap).forEach(function (sym) {
             var r = snap[sym];
             if (typeof r.e9 !== "number" || typeof r.e26 !== "number") return;
-            var prev = base[sym];
-            if (prev === undefined || prev === 0) return;
+            var prev;
+            // Small timeframes: the previous BAR is the reference, so a setup that
+            // formed on the latest bar shows up in this very scan. Fall back to the
+            // session baseline only when previous-bar values are missing.
+            if (curTF !== "1D" && typeof r.pe9 === "number" && typeof r.pe26 === "number") prev = sgn(r.pe9 - r.pe26);
+            else prev = base ? base[sym] : undefined;
+            if (prev === undefined || prev === null || prev === 0) return;
             var today = sgn(r.e9 - r.e26);
             if (prev < 0 && today > 0) buy.push(r);
             else if (prev > 0 && today < 0) sell.push(r);
@@ -749,13 +766,13 @@
         document.getElementById("ovSub").textContent = curTF === "1D"
           ? "Daily crossovers are compared against the 23 Nov 2026 baseline (426 stocks) — stocks without a baseline value cannot appear in this crossover list, but they are still counted in the coverage and can be checked with Manual Stock Check."
           : (baselineOnly
-              ? TF_LABEL[curTF] + " baseline has been set from this scan — crossovers for this timeframe will appear from the next scan."
-              : TF_LABEL[curTF] + " crossovers are calculated by comparing with the previous scan in this session.");
+              ? "Previous-bar EMA data was not available in this scan, so a session baseline has been set — crossovers for this timeframe will appear from the next scan."
+              : TF_LABEL[curTF] + " crossovers are detected by comparing the live EMAs with the previous bar's EMAs — a setup that formed on the latest bar shows up in the same scan.");
 
         if (baselineOnly) {
           setStatus("Live scan complete — " + fmtNum(fetchedCount) + " stocks fetched (" + fmtNum(total) + " in universe). " + TF_LABEL[curTF] + " baseline is set; crossovers will appear from the next scan.", "ok");
         } else {
-          setStatus("Live scan complete — " + buy.length + " BUY and " + sell.length + " SELL crossovers found · " + fmtNum(fetchedCount) + "/" + fmtNum(total) + " stocks fetched · " + tLabel + (prov ? " · Provisional (market is open)" : " · Final values"), "ok");
+          setStatus("Live scan complete — " + buy.length + " BUY and " + sell.length + " SELL crossovers found" + (curTF !== "1D" ? " (newly formed on the latest " + TF_LABEL[curTF] + " bar)" : "") + " · " + fmtNum(fetchedCount) + "/" + fmtNum(total) + " stocks fetched · " + tLabel + (prov ? " · Provisional (market is open)" : " · Final values"), "ok");
         }
       }
 
@@ -817,6 +834,10 @@
         }
         var curr = sgn(rec.e9 - rec.e26);
         var prev = getBaselineSign(sym);
+        var prevFromBar = false;
+        if (curTF !== "1D" && typeof rec.pe9 === "number" && typeof rec.pe26 === "number") { prev = sgn(rec.pe9 - rec.pe26); prevFromBar = true; }
+        var prevWhere = prevFromBar ? "on the previous bar" : "in the baseline";
+        var freshWhen = (curTF === "1D") ? "today" : "on the latest bar";
         var gap = rec.e26 ? ((rec.e9 - rec.e26)/rec.e26*100) : 0;
         document.getElementById("vEma9").textContent = fmtPrice(rec.e9);
         document.getElementById("vEma26").textContent = fmtPrice(rec.e26);
@@ -830,22 +851,22 @@
           box.className = "verdict buy";
           document.getElementById("vLabel").textContent = "Fresh Bullish Crossover · " + TF_LABEL[curTF];
           document.getElementById("vTitle").textContent = "BUY — Fresh Cross";
-          document.getElementById("vDesc").textContent = sym + " has just crossed up: EMA 9 was below EMA 26 in the baseline and is now above it. This is a fresh BUY crossover signal on the " + TF_LABEL[curTF] + " timeframe.";
+          document.getElementById("vDesc").textContent = sym + " has just crossed up: EMA 9 was below EMA 26 " + prevWhere + " and is now above it. This is a fresh BUY crossover signal on the " + TF_LABEL[curTF] + " timeframe.";
         } else if (prev !== null && prev > 0 && curr < 0) {
           box.className = "verdict sell";
           document.getElementById("vLabel").textContent = "Fresh Bearish Crossover · " + TF_LABEL[curTF];
           document.getElementById("vTitle").textContent = "SELL — Fresh Cross";
-          document.getElementById("vDesc").textContent = sym + " has just crossed down: EMA 9 was above EMA 26 in the baseline and is now below it. This is a fresh SELL crossover signal on the " + TF_LABEL[curTF] + " timeframe.";
+          document.getElementById("vDesc").textContent = sym + " has just crossed down: EMA 9 was above EMA 26 " + prevWhere + " and is now below it. This is a fresh SELL crossover signal on the " + TF_LABEL[curTF] + " timeframe.";
         } else if (curr > 0) {
           box.className = "verdict buy";
           document.getElementById("vLabel").textContent = "Bullish Trend · No Fresh Cross · " + TF_LABEL[curTF];
           document.getElementById("vTitle").textContent = "BUY Side — Bullish";
-          document.getElementById("vDesc").textContent = sym + " is in a bullish position: EMA 9 (" + fmtPrice(rec.e9) + ") is above EMA 26 (" + fmtPrice(rec.e26) + "). No fresh crossover today — the uptrend was already in place.";
+          document.getElementById("vDesc").textContent = sym + " is in a bullish position: EMA 9 (" + fmtPrice(rec.e9) + ") is above EMA 26 (" + fmtPrice(rec.e26) + "). No fresh crossover " + freshWhen + " — the uptrend was already in place.";
         } else if (curr < 0) {
           box.className = "verdict sell";
           document.getElementById("vLabel").textContent = "Bearish Trend · No Fresh Cross · " + TF_LABEL[curTF];
           document.getElementById("vTitle").textContent = "SELL Side — Bearish";
-          document.getElementById("vDesc").textContent = sym + " is in a bearish position: EMA 9 (" + fmtPrice(rec.e9) + ") is below EMA 26 (" + fmtPrice(rec.e26) + "). No fresh crossover today — the downtrend was already in place.";
+          document.getElementById("vDesc").textContent = sym + " is in a bearish position: EMA 9 (" + fmtPrice(rec.e9) + ") is below EMA 26 (" + fmtPrice(rec.e26) + "). No fresh crossover " + freshWhen + " — the downtrend was already in place.";
         } else {
           box.className = "verdict neutral";
           document.getElementById("vLabel").textContent = "Neutral · " + TF_LABEL[curTF];
@@ -857,9 +878,11 @@
 
       function fetchSingleSymbol(sym){
         var suf = TF_SUFFIX[curTF];
+        var cols = ["name", "close", "change", "volume", "EMA9" + suf, "EMA26" + suf];
+        if (suf) { cols.push("EMA9[1]" + suf, "EMA26[1]" + suf); }
         var body = JSON.stringify({
           symbols: { tickers: ["PSX:" + sym], query: { types: [] } },
-          columns: ["name", "close", "change", "volume", "EMA9" + suf, "EMA26" + suf],
+          columns: cols,
           range: [0, 10],
           markets: ["pakistan"]
         });
@@ -892,13 +915,13 @@
             var sym = (row.s||"").split(":")[1];
             if (sym === raw) {
               var d = row.d||[];
-              found = { s: sym, p: numOr(d[1],0), c: numOr(d[2],0), v: numOr(d[3],0), e9: d[4], e26: d[5] };
+              found = { s: sym, p: numOr(d[1],0), c: numOr(d[2],0), v: numOr(d[3],0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7] };
             }
           });
           if (!found && rows.length) {
             var d0 = rows[0].d||[];
             var s0 = (rows[0].s||"").split(":")[1];
-            if (s0) found = { s: s0, p: numOr(d0[1],0), c: numOr(d0[2],0), v: numOr(d0[3],0), e9: d0[4], e26: d0[5] };
+            if (s0) found = { s: s0, p: numOr(d0[1],0), c: numOr(d0[2],0), v: numOr(d0[3],0), e9: d0[4], e26: d0[5], pe9: d0[6], pe26: d0[7] };
           }
           if (!found) {
             // Fallback to last scan cache
