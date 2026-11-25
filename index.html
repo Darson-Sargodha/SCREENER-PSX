@@ -677,6 +677,9 @@
         </div>
         <div class="adv-controls">
           <div class="adv-tf-group" role="group" aria-label="Advance charting timeframe">
+            <button type="button" class="adv-tf-btn" data-advtf="15m" aria-pressed="false">15m</button>
+            <button type="button" class="adv-tf-btn" data-advtf="1H" aria-pressed="false">1H</button>
+            <button type="button" class="adv-tf-btn" data-advtf="4H" aria-pressed="false">4H</button>
             <button type="button" class="adv-tf-btn active" data-advtf="1D" aria-pressed="true">Daily</button>
             <button type="button" class="adv-tf-btn" data-advtf="1W" aria-pressed="false">Weekly</button>
           </div>
@@ -691,7 +694,7 @@
         <div class="manual-status" id="advStatus" role="status" aria-live="polite"></div>
         <h3 class="adv-signals-title">Recent Signals</h3>
         <ul class="adv-signals" id="advSignals"></ul>
-        <p class="adv-source">Data: SuperX (<a href="https://superx.pk" target="_blank" rel="noopener noreferrer">superx.pk</a>) — delayed end-of-day prices</p>
+        <p class="adv-source">Data: SuperX (<a href="https://superx.pk" target="_blank" rel="noopener noreferrer">superx.pk</a>) — delayed end-of-day prices for Daily / Weekly, intraday bars for 15m / 1H / 4H</p>
         <p class="adv-disclaimer"><strong>Disclaimer:</strong> The averages and signals shown on this chart are computer-generated and are provided for information, education and research purposes only. They are <strong>NOT buy signals and NOT sell signals</strong>, and they are not investment advice, financial advice, or a recommendation to buy, sell, or hold any stock. Nothing here is a guarantee of profit or of any future result. <strong>We shall not be responsible or liable for any loss, damage, or claim arising directly or indirectly from the use of this chart or of this tool.</strong> Always conduct your own independent research and, where appropriate, consult a licensed financial advisor before making any investment decision.</p>
       </div>
 
@@ -1645,10 +1648,12 @@
         if (manualDetail) openDetail(manualDetail.rec, manualDetail.side, manualDetail.label);
       });
 
-      // ---------- Advance Charting (SuperX daily data + Fast/Slow averages + signals) ----------
-      // Data comes from superx.pk's free end-of-day CSV, fetched directly by the
+      // ---------- Advance Charting (SuperX data + Fast/Slow averages + signals) ----------
+      // Daily / Weekly data comes from superx.pk's free end-of-day CSV, fetched directly by the
       // browser (the endpoint allows cross-origin reads). The baked daily file on
-      // this same site is the fallback when SuperX cannot be reached. The two
+      // this same site is the fallback when SuperX cannot be reached. Intraday
+      // timeframes (15m / 1H / 4H) come from SuperX's candle API instead, with
+      // no saved fallback. The two
       // averages are computed here in the browser over the full history, so the
       // lines and the BUY / SELL markers match the screener's own readings.
       var ADV_NO_BASELINE = ["ABHI", "ASICR2", "CWHC", "JAZZSURE", "NGLEL", "PINLR", "UVICR1"];
@@ -1714,6 +1719,49 @@
           if (!cur || monday !== curKey) {
             cur = { time: monday, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume || 0 };
             curKey = monday;
+            out.push(cur);
+          } else {
+            cur.high = Math.max(cur.high, b.high);
+            cur.low = Math.min(cur.low, b.low);
+            cur.close = b.close;
+            cur.volume += b.volume || 0;
+          }
+        });
+        return out;
+      }
+      // Intraday bars from SuperX's candle API (used by the 15m / 1H / 4H
+      // timeframes). Bar times arrive as ISO strings with the +05:00 offset;
+      // Date.parse turns them into epoch seconds for the chart library.
+      function advParseCandles(data) {
+        var raw = (data && data.bars) || [];
+        var bars = [];
+        raw.forEach(function (b) {
+          if (!b) return;
+          var t = Date.parse(b.t) / 1000;
+          var o = +b.o, h = +b.h, l = +b.l, c = +b.c, v = +b.v;
+          if (!isFinite(t) || !isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(c)) return;
+          bars.push({ time: t, open: o, high: h, low: l, close: c, volume: isFinite(v) ? v : 0 });
+        });
+        bars.sort(function (a, b) { return a.time - b.time; });
+        var dedup = [];
+        bars.forEach(function (b) {
+          if (dedup.length && dedup[dedup.length - 1].time === b.time) dedup[dedup.length - 1] = b;
+          else dedup.push(b);
+        });
+        return dedup;
+      }
+      // 4H bars from 1-hour bars: group each day into four-hour clock buckets
+      // (hour // 4 on the Pakistan clock, UTC+5) — first open, highest high,
+      // lowest low, last close, summed volume. The SuperX terminal builds its
+      // 4H view the same way.
+      function advTo4H(bars) {
+        var out = [], cur = null, curKey = null;
+        bars.forEach(function (b) {
+          var d = new Date((b.time + 5 * 3600) * 1000); // PKT fields via UTC getters
+          var key = d.getUTCFullYear() + "-" + d.getUTCMonth() + "-" + d.getUTCDate() + "-" + Math.floor(d.getUTCHours() / 4);
+          if (!cur || key !== curKey) {
+            cur = { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume || 0 };
+            curKey = key;
             out.push(cur);
           } else {
             cur.high = Math.max(cur.high, b.high);
@@ -1899,6 +1947,21 @@
         advSetStatus("Loading the " + sym + " chart…", "");
         loadLwLib()
           .then(function () {
+            if (advTF === "15m" || advTF === "1H" || advTF === "4H") {
+              // Intraday: SuperX candle API, fetched directly by the browser.
+              // 4H is fetched as 1-hour bars and grouped client-side. There is
+              // no saved intraday fallback — a failed fetch lands on the
+              // "chart data isn't available" message below.
+              var interval = (advTF === "15m") ? "15m" : "1h";
+              return fetchWithTimeout("https://api.superx.pk/candles?symbol=" + encodeURIComponent(sym) + "&range=1M&interval=" + interval, 15000)
+                .then(function (r) { if (!r.ok) throw new Error("SuperX candles request failed"); return r.json(); })
+                .then(function (data) {
+                  var bars = advParseCandles(data);
+                  if (advTF === "4H") bars = advTo4H(bars);
+                  if (!bars.length) throw new Error("no intraday bars from SuperX");
+                  return { bars: bars, baked: false };
+                });
+            }
             return fetchWithTimeout("https://superx.pk/chart/" + encodeURIComponent(sym) + ".csv", 10000)
               .then(function (r) { if (!r.ok) throw new Error("SuperX request failed"); return r.text(); })
               .then(function (text) {
