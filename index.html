@@ -309,6 +309,40 @@
       .manual-status.err { color:var(--red); }
       .manual-status.ok { color:var(--buy); }
 
+      /* ---------- Advance Charting ---------- */
+      .adv-controls { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:16px 0 12px; }
+      .adv-tf-group { display:flex; gap:4px; background:var(--panel-2); border-radius:12px; padding:4px; }
+      .adv-tf-btn {
+        min-height:40px; border:0; border-radius:9px; background:transparent;
+        color:var(--ink-2); font:inherit; font-weight:700; font-size:14.5px; cursor:pointer; padding:7px 18px;
+      }
+      .adv-tf-btn:hover { color:var(--ink); }
+      .adv-tf-btn.active { background:var(--seg-active-bg); color:var(--seg-active-ink); box-shadow:0 2px 8px rgba(12,19,34,.25); }
+      .adv-toggle { display:inline-flex; align-items:center; gap:9px; font-size:14.5px; font-weight:600; cursor:pointer; margin-left:auto; }
+      .adv-toggle input { width:20px; height:20px; accent-color:var(--buy); cursor:pointer; flex:none; }
+      .adv-legend { display:flex; flex-wrap:wrap; gap:6px 22px; align-items:baseline; font-size:14.5px; color:var(--ink-2); margin:2px 0 10px; min-height:22px; }
+      .adv-legend .adv-leg-sym { font-size:17px; font-weight:800; color:var(--ink); letter-spacing:.02em; }
+      .adv-legend strong { color:var(--ink); font-weight:600; }
+      .adv-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
+      .adv-wrap { position:relative; height:460px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#131722; }
+      .adv-note { margin:10px 0 0; font-size:13px; color:var(--ink-2); }
+      .adv-signals-title { margin:18px 0 8px; font-size:16px; font-weight:800; }
+      .adv-signals { list-style:none; margin:0; padding:0; }
+      .adv-signals li { display:flex; flex-wrap:wrap; gap:6px 16px; align-items:baseline; padding:8px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-2); }
+      .adv-signals li + li { margin-top:6px; }
+      .adv-sig-date { font-size:13.5px; color:var(--ink-2); font-weight:600; }
+      .adv-sig-type { font-weight:800; font-size:14.5px; }
+      .adv-sig-type.buy { color:var(--buy); }
+      .adv-sig-type.sell { color:var(--red); }
+      .adv-sig-none { color:var(--ink-2); font-size:14px; font-weight:500; }
+      .adv-source { margin:14px 0 0; font-size:13.5px; color:var(--ink-2); }
+      .adv-source a { color:var(--buy); font-weight:600; }
+      .adv-disclaimer { margin:10px 0 0; font-size:13px; line-height:1.6; color:var(--ink-2); }
+      @media (max-width: 720px) {
+        .adv-wrap { height:300px; }
+        .adv-toggle { margin-left:0; }
+      }
+
       /* ---------- Results ---------- */
       .controls {
         display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 28px 0 4px;
@@ -512,6 +546,7 @@
         <nav class="topnav" aria-label="Page sections">
           <a href="#screener">Screener</a>
           <a href="#manualCheck">Manual Check</a>
+          <a href="#advChart">Advance Charting</a>
           <a href="#buySection">Results</a>
           <a href="#marketOverview">Overview</a>
         </nav>
@@ -625,6 +660,37 @@
         </div>
       </div>
 
+      <!-- Advance Charting -->
+      <div class="manual" id="advChart">
+        <h2>Advance Charting</h2>
+        <p class="sub">Full price chart with volume for any PSX stock. The Fast &amp; Slow Averages are applied by default, with a BUY or SELL marker at every change between them.</p>
+        <div class="manual-row">
+          <div class="field">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+            <input type="text" id="advInput" value="OGDC" placeholder="Enter symbol — e.g. OGDC, HBL, LUCK, SYS" aria-label="Stock symbol for advance charting" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+          </div>
+          <button class="btn-main" id="advBtn" type="button">Search</button>
+        </div>
+        <div class="adv-controls">
+          <div class="adv-tf-group" role="group" aria-label="Advance charting timeframe">
+            <button type="button" class="adv-tf-btn active" data-advtf="1D" aria-pressed="true">Daily</button>
+            <button type="button" class="adv-tf-btn" data-advtf="1W" aria-pressed="false">Weekly</button>
+          </div>
+          <label class="adv-toggle">
+            <input type="checkbox" id="advIndToggle" checked />
+            <span>Fast &amp; Slow Averages</span>
+          </label>
+        </div>
+        <div class="adv-legend" id="advLegend" aria-live="polite"></div>
+        <div class="adv-wrap" id="advChartBox"></div>
+        <p class="adv-note" id="advNote" style="display:none;"></p>
+        <div class="manual-status" id="advStatus" role="status" aria-live="polite"></div>
+        <h3 class="adv-signals-title">Recent Signals</h3>
+        <ul class="adv-signals" id="advSignals"></ul>
+        <p class="adv-source">Data: SuperX (<a href="https://superx.pk" target="_blank" rel="noopener noreferrer">superx.pk</a>) — delayed end-of-day prices</p>
+        <p class="adv-disclaimer"><strong>Disclaimer:</strong> The averages and signals shown on this chart are computer-generated and are provided for information, education and research purposes only. They are <strong>NOT buy signals and NOT sell signals</strong>, and they are not investment advice, financial advice, or a recommendation to buy, sell, or hold any stock. Nothing here is a guarantee of profit or of any future result. <strong>We shall not be responsible or liable for any loss, damage, or claim arising directly or indirectly from the use of this chart or of this tool.</strong> Always conduct your own independent research and, where appropriate, consult a licensed financial advisor before making any investment decision.</p>
+      </div>
+
       <div class="controls">
         <div class="search">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
@@ -725,6 +791,7 @@
         <div class="tv-wrap" id="tvChart"></div>
         <div class="tv-actions">
           <a class="btn btn-tv" id="dTvLink" href="https://www.tradingview.com/chart/?symbol=PSX:OGDC" target="_blank" rel="noopener noreferrer">Open on TradingView &#8599;</a>
+          <button class="btn btn-ghost" id="dAdvBtn" type="button">Open in Advance Charting</button>
         </div>
         <div class="setup-box">
           <h3>Suggested Setup</h3>
@@ -1573,6 +1640,293 @@
       document.getElementById("verdictBox").addEventListener("click", function () {
         if (manualDetail) openDetail(manualDetail.rec, manualDetail.side, manualDetail.label);
       });
+
+      // ---------- Advance Charting (SuperX daily data + Fast/Slow averages + signals) ----------
+      // Data comes from superx.pk's free end-of-day CSV, fetched directly by the
+      // browser (the endpoint allows cross-origin reads). The baked daily file on
+      // this same site is the fallback when SuperX cannot be reached. The two
+      // averages are computed here in the browser over the full history, so the
+      // lines and the BUY / SELL markers match the screener's own readings.
+      var ADV_NO_BASELINE = ["ABHI", "ASICR2", "CWHC", "JAZZSURE", "NGLEL", "PINLR", "UVICR1"];
+      var advTF = "1D", advSym = "OGDC", advReq = 0;
+      var advChart = null, advCandle = null, advVol = null, advFast = null, advSlow = null;
+      var advMarkers = [];
+
+      function advInUniverse(sym) {
+        return Object.prototype.hasOwnProperty.call(BASELINE_1D, sym) || ADV_NO_BASELINE.indexOf(sym) !== -1;
+      }
+      function advSetStatus(msg, cls) {
+        var el = document.getElementById("advStatus");
+        el.textContent = msg;
+        el.className = "manual-status" + (cls ? " " + cls : "");
+      }
+      // Standard exponential moving average over the closes, seeded with the
+      // simple average of the first n closes; entries before the seed stay null.
+      function advAvgSeries(closes, n) {
+        var out = [];
+        for (var i = 0; i < closes.length; i++) out.push(null);
+        if (closes.length < n) return out;
+        var sum = 0;
+        for (var j = 0; j < n; j++) sum += closes[j];
+        var prev = sum / n;
+        out[n - 1] = prev;
+        var k = 2 / (n + 1);
+        for (var m = n; m < closes.length; m++) {
+          prev = closes[m] * k + prev * (1 - k);
+          out[m] = prev;
+        }
+        return out;
+      }
+      function advParseCsv(text) {
+        var byTime = {}, times = [];
+        String(text || "").split(/\r?\n/).forEach(function (line, idx) {
+          if (idx === 0) return; // header: date,open,high,low,close_adjusted,volume
+          line = line.trim();
+          if (!line) return;
+          var p = line.split(",");
+          if (p.length < 6) return;
+          var dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(p[0].trim());
+          if (!dm) return;
+          var o = parseFloat(p[1]), h = parseFloat(p[2]), l = parseFloat(p[3]),
+              c = parseFloat(p[4]), v = parseFloat(p[5]);
+          if (!isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(c)) return;
+          var t = Date.UTC(+dm[1], +dm[2] - 1, +dm[3]) / 1000;
+          if (!Object.prototype.hasOwnProperty.call(byTime, t)) times.push(t);
+          byTime[t] = { time: t, open: o, high: h, low: l, close: c, volume: isFinite(v) ? v : 0 };
+        });
+        times.sort(function (a, b) { return a - b; });
+        return times.map(function (t) { return byTime[t]; });
+      }
+      // Weekly bars from daily bars; each week starts on Monday (UTC).
+      function advToWeekly(bars) {
+        var out = [], cur = null, curKey = null;
+        bars.forEach(function (b) {
+          var dow = (new Date(b.time * 1000).getUTCDay() + 6) % 7; // Monday = 0
+          var monday = b.time - dow * 86400;
+          if (!cur || monday !== curKey) {
+            cur = { time: monday, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume || 0 };
+            curKey = monday;
+            out.push(cur);
+          } else {
+            cur.high = Math.max(cur.high, b.high);
+            cur.low = Math.min(cur.low, b.low);
+            cur.close = b.close;
+            cur.volume += b.volume || 0;
+          }
+        });
+        return out;
+      }
+      // Separate fallback fetch of the baked daily file — deliberately not the
+      // detail window's fetchBakedCandles(), which follows the screener timeframe.
+      function advFetchBakedDaily(sym) {
+        return fetch("data/daily/" + encodeURIComponent(sym) + ".json")
+          .then(function (r) { if (!r.ok) throw new Error("baked chart data not found"); return r.json(); })
+          .then(function (data) {
+            var raw = (data && data.bars) || [];
+            var bars = [];
+            raw.forEach(function (b) {
+              if (!b || b.length < 5) return;
+              var t = +b[0], o = +b[1], h = +b[2], l = +b[3], c = +b[4];
+              if (!isFinite(t) || !isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(c)) return;
+              bars.push({ time: t, open: o, high: h, low: l, close: c, volume: +b[5] || 0 });
+            });
+            bars.sort(function (a, b) { return a.time - b.time; });
+            var dedup = [];
+            bars.forEach(function (b) {
+              if (dedup.length && dedup[dedup.length - 1].time === b.time) dedup[dedup.length - 1] = b;
+              else dedup.push(b);
+            });
+            return dedup;
+          });
+      }
+      function advFmtDate(t) {
+        var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        var d = new Date(t * 1000);
+        return d.getUTCDate() + " " + months[d.getUTCMonth()] + " " + d.getUTCFullYear();
+      }
+      function advDestroy() {
+        if (advChart) { try { advChart.remove(); } catch (e) { /* already gone */ } }
+        advChart = null; advCandle = null; advVol = null; advFast = null; advSlow = null; advMarkers = [];
+      }
+      function advApplyToggle() {
+        var on = document.getElementById("advIndToggle").checked;
+        if (advFast) advFast.applyOptions({ visible: on });
+        if (advSlow) advSlow.applyOptions({ visible: on });
+        if (advCandle) advCandle.setMarkers(on ? advMarkers : []);
+      }
+      function advRender(sym, dailyBars, baked) {
+        var bars = (advTF === "1W") ? advToWeekly(dailyBars) : dailyBars.slice();
+        var closes = bars.map(function (b) { return b.close; });
+        var fast = advAvgSeries(closes, 9);
+        var slow = advAvgSeries(closes, 26);
+        // Signal markers over the full series: fast moving from below the slow
+        // average to above it is a BUY; the reverse is a SELL.
+        var allMarkers = [], signals = [];
+        for (var i = 1; i < bars.length; i++) {
+          if (fast[i] === null || slow[i] === null || fast[i - 1] === null || slow[i - 1] === null) continue;
+          var pd = fast[i - 1] - slow[i - 1], cd = fast[i] - slow[i];
+          if (pd < 0 && cd > 0) {
+            allMarkers.push({ time: bars[i].time, position: "belowBar", color: "#22c55e", shape: "arrowUp", text: "BUY" });
+            signals.push({ time: bars[i].time, type: "BUY" });
+          } else if (pd > 0 && cd < 0) {
+            allMarkers.push({ time: bars[i].time, position: "aboveBar", color: "#ff6b5e", shape: "arrowDown", text: "SELL" });
+            signals.push({ time: bars[i].time, type: "SELL" });
+          }
+        }
+        // Render only the most recent stretch for speed; the averages above were
+        // computed over the full history, so the visible lines are exact.
+        var limit = (advTF === "1W") ? 250 : 500;
+        var start = Math.max(0, bars.length - limit);
+        var viewBars = bars.slice(start);
+        var firstT = viewBars.length ? viewBars[0].time : 0;
+        advMarkers = allMarkers.filter(function (mk) { return mk.time >= firstT; });
+        var fastData = [], slowData = [];
+        for (var j = start; j < bars.length; j++) {
+          if (fast[j] !== null) fastData.push({ time: bars[j].time, value: fast[j] });
+          if (slow[j] !== null) slowData.push({ time: bars[j].time, value: slow[j] });
+        }
+        advDestroy();
+        var wrap = document.getElementById("advChartBox");
+        wrap.innerHTML = "";
+        advChart = LightweightCharts.createChart(wrap, {
+          width: wrap.clientWidth,
+          height: wrap.clientHeight,
+          layout: {
+            background: { type: "solid", color: "#131722" },
+            textColor: "#c9d6e8",
+            fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
+            fontSize: 11
+          },
+          grid: {
+            vertLines: { color: "rgba(255,255,255,.06)" },
+            horzLines: { color: "rgba(255,255,255,.06)" }
+          },
+          rightPriceScale: { borderColor: "rgba(255,255,255,.18)" },
+          timeScale: { borderColor: "rgba(255,255,255,.18)" }
+        });
+        advCandle = advChart.addCandlestickSeries({
+          upColor: "#38bdf8", downColor: "#ff6b5e",
+          wickUpColor: "#38bdf8", wickDownColor: "#ff6b5e",
+          borderVisible: false
+        });
+        advCandle.setData(viewBars.map(function (b) {
+          return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
+        }));
+        advChart.priceScale("").applyOptions({ scaleMargins: { top: 0.05, bottom: 0.2 } });
+        advVol = advChart.addHistogramSeries({
+          priceScaleId: "volume",
+          priceFormat: { type: "volume" }
+        });
+        advVol.setData(viewBars.map(function (b) {
+          return { time: b.time, value: b.volume || 0, color: b.close >= b.open ? "rgba(56,189,248,.55)" : "rgba(255,107,94,.55)" };
+        }));
+        advChart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+        advFast = advChart.addLineSeries({ color: "#38bdf8", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+        advFast.setData(fastData);
+        advSlow = advChart.addLineSeries({ color: "#f472b6", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+        advSlow.setData(slowData);
+        advChart.timeScale().fitContent();
+        advApplyToggle();
+        // Legend: symbol, last close, current Fast / Slow values
+        var lastBar = bars[bars.length - 1];
+        var fLast = fast[fast.length - 1], sLast = slow[slow.length - 1];
+        document.getElementById("advLegend").innerHTML =
+          '<span class="adv-leg-sym">' + esc(sym) + "</span>" +
+          '<span>Close <strong class="mono">Rs ' + fmtPrice(lastBar.close) + "</strong></span>" +
+          '<span><span class="adv-dot" style="background:#38bdf8"></span>Fast Avg <strong class="mono">' + (fLast !== null ? fmtPrice(fLast) : "—") + "</strong></span>" +
+          '<span><span class="adv-dot" style="background:#f472b6"></span>Slow Avg <strong class="mono">' + (sLast !== null ? fmtPrice(sLast) : "—") + "</strong></span>";
+        // Recent signals: last 10, newest first
+        var recent = signals.slice(-10).reverse();
+        document.getElementById("advSignals").innerHTML = recent.length
+          ? recent.map(function (sg) {
+              return '<li><span class="adv-sig-date mono">' + advFmtDate(sg.time) + '</span><span class="adv-sig-type ' + (sg.type === "BUY" ? "buy" : "sell") + '">' + sg.type + " — Fresh Setup</span></li>";
+            }).join("")
+          : '<li class="adv-sig-none">No signals in the loaded history for ' + esc(sym) + ".</li>";
+        var note = document.getElementById("advNote");
+        if (baked) {
+          note.textContent = "SuperX data could not be loaded, so this chart is showing saved chart data instead.";
+          note.style.display = "";
+        } else {
+          note.textContent = "";
+          note.style.display = "none";
+        }
+      }
+      function advLoad(sym) {
+        var req = ++advReq;
+        if (!advInUniverse(sym)) {
+          advSetStatus("Symbol \"" + sym + "\" was not found on PSX. Please check the spelling — use the ticker symbol, e.g. OGDC, MEBL, SYS.", "err");
+          return;
+        }
+        advSym = sym;
+        advSetStatus("Loading the " + sym + " chart…", "");
+        loadLwLib()
+          .then(function () {
+            return fetchWithTimeout("https://superx.pk/chart/" + encodeURIComponent(sym) + ".csv", 10000)
+              .then(function (r) { if (!r.ok) throw new Error("SuperX request failed"); return r.text(); })
+              .then(function (text) {
+                var bars = advParseCsv(text);
+                if (!bars.length) throw new Error("no rows in SuperX data");
+                return { bars: bars, baked: false };
+              })
+              .catch(function () {
+                return advFetchBakedDaily(sym).then(function (bars) {
+                  if (!bars.length) throw new Error("no chart data");
+                  return { bars: bars, baked: true };
+                });
+              });
+          })
+          .then(function (res) {
+            if (req !== advReq) return; // a newer search has taken over
+            advRender(sym, res.bars, res.baked);
+            advSetStatus("", "");
+          })
+          .catch(function () {
+            if (req !== advReq) return;
+            advDestroy();
+            document.getElementById("advChartBox").innerHTML = '<div class="chart-msg"><div>Chart data isn&rsquo;t available for <strong>' + esc(sym) + "</strong> right now.</div></div>";
+            document.getElementById("advLegend").innerHTML = "";
+            document.getElementById("advSignals").innerHTML = "";
+            var note = document.getElementById("advNote");
+            note.textContent = ""; note.style.display = "none";
+            advSetStatus("", "");
+          });
+      }
+      function advSearch() {
+        var raw = document.getElementById("advInput").value.trim().toUpperCase().replace(/^PSX:/, "").replace(/[^A-Z0-9]/g, "");
+        if (!raw) { advSetStatus("Please enter a stock symbol first — e.g. OGDC, HBL, LUCK.", "err"); return; }
+        document.getElementById("advInput").value = raw;
+        advLoad(raw);
+      }
+      document.getElementById("advBtn").addEventListener("click", advSearch);
+      document.getElementById("advInput").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); advSearch(); } });
+      Array.prototype.forEach.call(document.querySelectorAll(".adv-tf-btn"), function (b) {
+        b.addEventListener("click", function () {
+          advTF = b.getAttribute("data-advtf");
+          Array.prototype.forEach.call(document.querySelectorAll(".adv-tf-btn"), function (x) {
+            var on = x === b;
+            x.classList.toggle("active", on);
+            x.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+          advLoad(advSym);
+        });
+      });
+      document.getElementById("advIndToggle").addEventListener("change", advApplyToggle);
+      window.addEventListener("resize", function () {
+        if (!advChart) return;
+        var wrap = document.getElementById("advChartBox");
+        if (wrap && wrap.clientWidth && wrap.clientHeight) advChart.resize(wrap.clientWidth, wrap.clientHeight);
+      });
+      // Detail window tie-in: jump from a stock's detail window into Advance Charting
+      document.getElementById("dAdvBtn").addEventListener("click", function () {
+        if (!detailRec || !detailRec.s) return;
+        var sym = detailRec.s;
+        closeDetail();
+        document.getElementById("advInput").value = sym;
+        advLoad(sym);
+        document.getElementById("advChart").scrollIntoView();
+      });
+      // Default chart: OGDC loads with the page so it is ready when scrolled to
+      advLoad("OGDC");
 
       render();
       runScan();
