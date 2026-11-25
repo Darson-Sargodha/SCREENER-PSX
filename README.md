@@ -1,4 +1,4 @@
-# PSX EMA Screener
+# Scanify
 
 A live screener for Pakistan Stock Exchange stocks. Open the page, pick a timeframe (Daily, Weekly, 4H, 1H, 15m) and tap Scan — it fetches live market data in the browser and lists the results with price, % change and volume. You can also check any single stock by typing its symbol.
 
