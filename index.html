@@ -152,21 +152,28 @@
       .hero-logo .logo-part { position: absolute; display: block; height: auto; }
       .hero-logo .logo-part-s { left: 0; top: 0; width: 62.1667%; }
       .hero-logo .logo-part-canify { left: 49.1667%; top: 67.8038%; width: 50.8333%; }
-      @media (prefers-reduced-motion: no-preference) {
-        /* One-time entrance, played once on every page load / refresh and then still:
-           the S glides in from the left while CANIFY glides in from the right; they meet
-           to complete the logo with a gentle fade and a subtle 0.96 -> 1 scale settle.
-           No looping motion anywhere — the top-bar and footer marks are static too. */
-        .hero-logo .logo-part-s { animation: logoInLeft 1.05s cubic-bezier(.22, .61, .21, 1) both; will-change: transform, opacity; }
-        .hero-logo .logo-part-canify { animation: logoInRight 1.05s cubic-bezier(.22, .61, .21, 1) both; will-change: transform, opacity; }
-        @keyframes logoInLeft {
-          from { transform: translateX(-60px) scale(.96); opacity: 0; }
-          to { transform: translateX(0) scale(1); opacity: 1; }
-        }
-        @keyframes logoInRight {
-          from { transform: translateX(60px) scale(.96); opacity: 0; }
-          to { transform: translateX(0) scale(1); opacity: 1; }
-        }
+      /* One-time entrance, played once on every page load / refresh and then still:
+         the S glides in from the left while CANIFY glides in from the right; they meet
+         to complete the logo with a gentle fade and a subtle 0.96 -> 1 scale settle.
+         This runs on every device and regardless of the reduced-motion setting, so the
+         entrance is seen on desktop too. It starts only when JavaScript adds the .play
+         class after the page has painted (see the script at the end of the body), so it
+         never finishes unseen on a fast load; until then the parts stay hidden (the
+         logo-armed class is set by the small script in the head, before first paint),
+         so there is no flash of the finished logo first. Without JavaScript the logo
+         simply shows as-is. No looping motion anywhere — the top-bar and footer marks
+         are static too. */
+      .hero-logo .logo-part { will-change: transform, opacity; }
+      html.logo-armed .hero-logo .logo-part { opacity: 0; }
+      .hero-logo.play .logo-part-s { animation: logoInLeft 1.05s cubic-bezier(.22, .61, .21, 1) both; }
+      .hero-logo.play .logo-part-canify { animation: logoInRight 1.05s cubic-bezier(.22, .61, .21, 1) both; }
+      @keyframes logoInLeft {
+        from { transform: translateX(-60px) scale(.96); opacity: 0; }
+        to { transform: translateX(0) scale(1); opacity: 1; }
+      }
+      @keyframes logoInRight {
+        from { transform: translateX(60px) scale(.96); opacity: 0; }
+        to { transform: translateX(0) scale(1); opacity: 1; }
       }
       .hero-badge {
         display: inline-flex; align-items: center; gap: 8px;
@@ -417,6 +424,13 @@
         tbody tr td.sym::before { content: "Symbol"; align-self: center; }
       }
     </style>
+    <script>
+      // Arm the hero logo's hidden pre-entrance state before anything paints, so the
+      // split entrance (started after load by the script at the end of the body) begins
+      // from a clean blank instead of flashing the finished logo first. Without
+      // JavaScript this class is never added and the logo simply shows.
+      document.documentElement.classList.add("logo-armed");
+    </script>
   </head>
   <body>
     <header class="topbar">
@@ -1144,6 +1158,28 @@
 
       render();
       runScan();
+    </script>
+    <script>
+      // Hero logo split entrance: add .play only once the window has loaded and two
+      // frames have been painted, so the S / CANIFY entrance is actually seen on fast
+      // desktop loads as well as on mobile. It plays exactly once per load / refresh,
+      // then the logo stays still.
+      (function () {
+        var heroLogo = document.querySelector(".hero-logo");
+        if (!heroLogo) { return; }
+        var started = false;
+        function startEntrance() {
+          if (started) { return; }
+          started = true;
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              heroLogo.classList.add("play");
+            });
+          });
+        }
+        if (document.readyState === "complete") { startEntrance(); }
+        else { window.addEventListener("load", startEntrance); }
+      })();
     </script>
   </body>
 </html>
