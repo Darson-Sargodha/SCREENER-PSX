@@ -347,6 +347,32 @@
         .adv-toggle { margin-left:0; }
       }
 
+      /* ---------- Volume Monitor ---------- */
+      .vol-today { margin-top: 16px; }
+      .vol-today-head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin-bottom: 10px; }
+      .vol-sym { font-size: 22px; font-weight: 800; letter-spacing: .02em; }
+      .vol-date { font-size: 13.5px; color: var(--ink-2); font-weight: 600; }
+      .vol-plot { position: relative; display: flex; align-items: flex-end; gap: 10px; height: 170px; border-bottom: 1px solid var(--line); }
+      .vol-col { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; min-width: 0; }
+      .vol-bar { width: 100%; background: var(--buy); opacity: .45; border-radius: 6px 6px 0 0; }
+      .vol-bar.today { opacity: 1; }
+      .vol-avgdash { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--red); }
+      .vol-avg-tag {
+        position: absolute; left: 10px; top: 0; transform: translateY(-50%);
+        background: var(--panel); padding: 0 6px; font-size: 12px; font-weight: 700; color: var(--red); white-space: nowrap;
+      }
+      .vol-axis { display: flex; gap: 10px; margin-top: 8px; }
+      .vol-lab { flex: 1 1 0; text-align: center; min-width: 0; }
+      .vol-lab .d { display: block; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+      .vol-lab .v { display: block; font-size: 12.5px; margin-top: 1px; }
+      .vol-avg-line { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
+      .vol-avg-line strong { color: var(--ink); }
+      @media (max-width: 720px) {
+        .vol-plot { height: 140px; gap: 6px; }
+        .vol-axis { gap: 6px; }
+        .vol-lab .v { font-size: 11.5px; }
+      }
+
       /* ---------- Results ---------- */
       .controls {
         display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 28px 0 4px;
@@ -551,6 +577,7 @@
           <a href="#screener">Screener</a>
           <a href="#manualCheck">Manual Check</a>
           <a href="#advChart">Advance Charting</a>
+          <a href="#volMonitor">Volume Monitor</a>
           <a href="#buySection">Results</a>
           <a href="#marketOverview">Overview</a>
         </nav>
@@ -696,6 +723,47 @@
         <ul class="adv-signals" id="advSignals"></ul>
         <p class="adv-source">Data: SuperX (<a href="https://superx.pk" target="_blank" rel="noopener noreferrer">superx.pk</a>) — delayed end-of-day prices for Daily / Weekly, intraday bars for 15m / 1H / 4H</p>
         <p class="adv-disclaimer"><strong>Disclaimer:</strong> The averages and signals shown on this chart are computer-generated and are provided for information, education and research purposes only. They are <strong>NOT buy signals and NOT sell signals</strong>, and they are not investment advice, financial advice, or a recommendation to buy, sell, or hold any stock. Nothing here is a guarantee of profit or of any future result. <strong>We shall not be responsible or liable for any loss, damage, or claim arising directly or indirectly from the use of this chart or of this tool.</strong> Always conduct your own independent research and, where appropriate, consult a licensed financial advisor before making any investment decision.</p>
+      </div>
+
+      <!-- Volume Monitor -->
+      <div class="manual" id="volMonitor">
+        <h2>Volume Monitor</h2>
+        <p class="sub">Today&rsquo;s traded volume for any PSX stock, its last 7 sessions, and how today compares with the 7-day average. Every figure shown is actual traded volume.</p>
+        <div class="manual-row">
+          <div class="field">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+            <input type="text" id="volInput" value="OGDC" placeholder="Enter symbol — e.g. OGDC, HBL, LUCK, SYS" aria-label="Stock symbol for volume monitor" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+          </div>
+          <button class="btn-main" id="volBtn" type="button">Check Volume</button>
+        </div>
+        <div class="manual-status" id="volStatus" role="status" aria-live="polite"></div>
+        <div class="vol-today" id="volToday" style="display:none;">
+          <div class="vol-today-head">
+            <span class="vol-sym" id="volSym">—</span>
+            <span class="vol-date" id="volDate">—</span>
+          </div>
+          <div class="manual-grid">
+            <div class="cell"><div class="k">Volume Today</div><div class="val" id="volTodayVol">—</div></div>
+            <div class="cell"><div class="k">Value Traded Today</div><div class="val" id="volTodayVal">—</div></div>
+            <div class="cell"><div class="k">Volume vs 7-Day Average</div><div class="val" id="volTodayX">—</div></div>
+            <div class="cell"><div class="k">Change vs 7-Day Average</div><div class="val" id="volTodayChg">—</div></div>
+          </div>
+        </div>
+        <h3 class="adv-signals-title">Last 7 Sessions</h3>
+        <div class="vol-plot" id="volPlot"></div>
+        <div class="vol-axis" id="volAxis"></div>
+        <p class="vol-avg-line" id="volAvgLine"></p>
+        <h3 class="adv-signals-title">Most Active Today</h3>
+        <div class="table-card">
+          <table aria-label="Most active stocks by volume today">
+            <thead><tr>
+              <th>Symbol</th><th class="num">Volume Today</th><th class="num">Value Traded (Rs)</th>
+            </tr></thead>
+            <tbody id="volTopBody"></tbody>
+          </table>
+          <p class="empty-msg" id="volTopEmpty">Loading the most active stocks&hellip;</p>
+        </div>
+        <p class="adv-source">Data: TradingView (today&rsquo;s volume and value traded) and SuperX (<a href="https://superx.pk" target="_blank" rel="noopener noreferrer">superx.pk</a>) (daily volume history). Figures may be delayed and are shown for information, education and research purposes only.</p>
       </div>
 
       <div class="controls">
@@ -2037,6 +2105,228 @@
       });
       // Default chart: OGDC loads with the page so it is ready when scrolled to
       advLoad("OGDC");
+
+      // ---------- Volume Monitor (actual traded volume only) ----------
+      // Today's volume and value traded come live from the TradingView scanner
+      // (the same text/plain POST the screener uses); the daily volume history
+      // and the 7-day average come from SuperX's daily CSV. Only total traded
+      // volume is published for PSX stocks, so this section shows totals only —
+      // there is no split of the total into sides anywhere here.
+      var volSym = "OGDC", volReq = 0, volSnapCache = null;
+      var VOL_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      var VOL_WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      function volSetStatus(msg, cls) {
+        var el = document.getElementById("volStatus");
+        el.textContent = msg;
+        el.className = "manual-status" + (cls ? " " + cls : "");
+      }
+      function volDateStr(t) {
+        var d = new Date(t * 1000);
+        function p2(n) { return ("0" + n).slice(-2); }
+        return d.getUTCFullYear() + "-" + p2(d.getUTCMonth() + 1) + "-" + p2(d.getUTCDate());
+      }
+      // Today's date (YYYY-MM-DD) on the Pakistan clock, to compare against the
+      // SuperX CSV's latest session date.
+      function volTodayStr() {
+        try {
+          var fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", year: "numeric", month: "2-digit", day: "2-digit" });
+          var p = {};
+          fmt.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+          return p.year + "-" + p.month + "-" + p.day;
+        } catch (e) { return ""; }
+      }
+      function fmtVolShort(n) {
+        if (typeof n !== "number" || !isFinite(n)) return "—";
+        if (n >= 1000000) { var m = n / 1000000; return (m >= 100 ? String(Math.round(m)) : String(Math.round(m * 10) / 10)) + "M"; }
+        if (n >= 1000) { var k = n / 1000; return (k >= 100 ? String(Math.round(k)) : String(Math.round(k * 10) / 10)) + "K"; }
+        return String(Math.round(n));
+      }
+      function volFetchPage(start, end) {
+        var body = JSON.stringify({
+          symbols: { query: { types: ["stock"] }, tickers: [] },
+          columns: ["name", "volume", "Value.Traded"],
+          range: [start, end],
+          markets: ["pakistan"],
+          sort: { sortBy: "name", sortOrder: "asc" }
+        });
+        var ctrl = ("AbortController" in window) ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 25000) : null;
+        // The Pakistan market endpoint, not global/scan: both answer the same
+        // query, but global/scan converts Value.Traded to US dollars while this
+        // endpoint returns it in rupees, which is what the section displays.
+        return fetch("https://scanner.tradingview.com/pakistan/scan", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: body,
+          signal: ctrl ? ctrl.signal : undefined
+        }).then(function (r) {
+          if (timer) clearTimeout(timer);
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        }).catch(function (e) { if (timer) clearTimeout(timer); throw e; });
+      }
+      // One live snapshot of the whole universe: symbol -> { v, val }. It feeds
+      // both the Today card and the Most Active list, and is cached for the
+      // session so repeat symbol checks do not refetch the market.
+      function volFetchSnapshot() {
+        if (volSnapCache) return Promise.resolve(volSnapCache);
+        var PAGE = 400;
+        var map = {};
+        function add(rows) {
+          (rows || []).forEach(function (row) {
+            var sym = (row.s || "").split(":")[1];
+            if (!sym) return;
+            var d = row.d || [];
+            map[sym] = { s: sym, v: numOr(d[1], null), val: numOr(d[2], null) };
+          });
+        }
+        return volFetchPage(0, PAGE).then(function (first) {
+          add(first.data);
+          var total = first.totalCount || (first.data || []).length;
+          if (total <= PAGE) { volSnapCache = map; return map; }
+          return volFetchPage(PAGE, total + PAGE).then(function (rest) {
+            add(rest.data);
+            volSnapCache = map;
+            return map;
+          }).catch(function () { volSnapCache = map; return map; });
+        });
+      }
+      function volRenderTop(map) {
+        var rows = Object.keys(map).map(function (k) { return map[k]; })
+          .filter(function (r) { return typeof r.v === "number" && r.v > 0; })
+          .sort(function (a, b) { return b.v - a.v; })
+          .slice(0, 10);
+        var body = document.getElementById("volTopBody");
+        body.innerHTML = rows.map(function (r) {
+          return "<tr>" +
+            '<td class="sym" data-label="Symbol">' + esc(r.s) + "</td>" +
+            '<td class="num" data-label="Volume Today">' + fmtNum(r.v) + "</td>" +
+            '<td class="num" data-label="Value Traded (Rs)">' + (typeof r.val === "number" ? fmtNum(Math.round(r.val)) : "—") + "</td>" +
+            "</tr>";
+        }).join("");
+        Array.prototype.forEach.call(body.querySelectorAll("tr"), function (tr, i) {
+          tr.addEventListener("click", function () {
+            document.getElementById("volInput").value = rows[i].s;
+            volLoad(rows[i].s);
+            document.getElementById("volMonitor").scrollIntoView();
+          });
+        });
+        var emptyEl = document.getElementById("volTopEmpty");
+        emptyEl.style.display = rows.length ? "none" : "block";
+        if (!rows.length) emptyEl.textContent = "The most active list is unavailable right now.";
+      }
+      function volRender(sym, bars, todayRec) {
+        var todayStr = volTodayStr();
+        var completed = [], display = [], avg7 = null, csvHasToday = false;
+        if (bars && bars.length) {
+          // If the CSV's latest session IS today (after the close), that row is
+          // today's bar; the completed sessions are everything before it, so
+          // today is never counted inside its own 7-day average.
+          csvHasToday = volDateStr(bars[bars.length - 1].time) === todayStr;
+          completed = csvHasToday ? bars.slice(0, bars.length - 1) : bars.slice();
+          var last7c = completed.slice(-7);
+          if (last7c.length) {
+            var sum = 0;
+            last7c.forEach(function (b) { sum += b.volume || 0; });
+            avg7 = sum / last7c.length;
+          }
+          display = bars.slice(-7);
+        }
+        // Today card — live scanner figures
+        document.getElementById("volToday").style.display = "";
+        document.getElementById("volSym").textContent = sym;
+        var p = pktParts();
+        document.getElementById("volDate").textContent = "Today · " + p.weekday + " " + p.day + " " + p.month + " " + p.year;
+        var tv = todayRec && typeof todayRec.v === "number" ? todayRec.v : null;
+        var tval = todayRec && typeof todayRec.val === "number" ? todayRec.val : null;
+        document.getElementById("volTodayVol").textContent = tv !== null ? fmtNum(tv) : "—";
+        document.getElementById("volTodayVal").textContent = tval !== null ? "Rs " + fmtNum(Math.round(tval)) : "—";
+        var ratioEl = document.getElementById("volTodayX");
+        var chgEl = document.getElementById("volTodayChg");
+        if (tv !== null && avg7) {
+          var ratio = tv / avg7;
+          ratioEl.textContent = (Math.round(ratio * 100) / 100) + "× average";
+          var pct = (tv - avg7) / avg7 * 100;
+          chgEl.textContent = (pct > 0 ? "+" : "") + pct.toFixed(1) + "%";
+          chgEl.className = "val " + (pct > 0 ? "chg-up" : (pct < 0 ? "chg-dn" : "chg-flat"));
+        } else {
+          ratioEl.textContent = "—";
+          chgEl.textContent = "—";
+          chgEl.className = "val";
+        }
+        // Last 7 sessions — daily volume bars with the average as a dashed level
+        var plot = document.getElementById("volPlot");
+        var axis = document.getElementById("volAxis");
+        var avgLine = document.getElementById("volAvgLine");
+        if (!display.length) {
+          plot.innerHTML = '<p class="adv-sig-none" style="align-self:center; margin:0 auto;">Daily volume history is unavailable for ' + esc(sym) + " right now.</p>";
+          axis.innerHTML = "";
+          avgLine.textContent = "";
+          return;
+        }
+        var max = 0;
+        display.forEach(function (b) { max = Math.max(max, b.volume || 0); });
+        if (avg7) max = Math.max(max, avg7);
+        if (!max) max = 1;
+        var html = "";
+        if (avg7) {
+          html += '<div class="vol-avgdash" style="bottom:' + (avg7 / max * 100).toFixed(1) + '%"><span class="vol-avg-tag">7-day average · ' + fmtVolShort(avg7) + "</span></div>";
+        }
+        display.forEach(function (b, i) {
+          var isToday = csvHasToday && i === display.length - 1;
+          var h = Math.max(1.5, (b.volume || 0) / max * 100);
+          html += '<div class="vol-col"><div class="vol-bar' + (isToday ? " today" : "") + '" style="height:' + h.toFixed(1) + '%" title="' + esc(advFmtDate(b.time)) + " — " + fmtNum(b.volume || 0) + ' shares"></div></div>';
+        });
+        plot.innerHTML = html;
+        axis.innerHTML = display.map(function (b, i) {
+          var isToday = csvHasToday && i === display.length - 1;
+          var d = new Date(b.time * 1000);
+          var lab = isToday ? "Today" : VOL_WD[d.getUTCDay()] + " " + d.getUTCDate() + " " + VOL_MONTHS[d.getUTCMonth()];
+          return '<div class="vol-lab"><span class="d">' + lab + '</span><span class="v mono">' + fmtVolShort(b.volume || 0) + "</span></div>";
+        }).join("");
+        avgLine.innerHTML = avg7
+          ? "7-day average volume: <strong class=\"mono\">" + fmtNum(Math.round(avg7)) + " shares</strong> — averaged over the last 7 completed sessions" + (csvHasToday ? "; today's session is the last bar above." : ".")
+          : "Not enough completed sessions yet to compute a 7-day average for " + esc(sym) + ".";
+      }
+      function volLoad(sym) {
+        var req = ++volReq;
+        if (!advInUniverse(sym)) {
+          volSetStatus("Symbol \"" + sym + "\" was not found on PSX. Please check the spelling — use the ticker symbol, e.g. OGDC, MEBL, SYS.", "err");
+          return;
+        }
+        volSym = sym;
+        volSetStatus("Loading volume data for " + sym + "…", "");
+        var csvP = fetchWithTimeout("https://superx.pk/chart/" + encodeURIComponent(sym) + ".csv", 10000)
+          .then(function (r) { if (!r.ok) throw new Error("SuperX request failed"); return r.text(); })
+          .then(function (text) { return advParseCsv(text); })
+          .catch(function () { return null; });
+        var snapP = volFetchSnapshot().catch(function () { return null; });
+        Promise.all([csvP, snapP]).then(function (res) {
+          if (req !== volReq) return; // a newer search has taken over
+          var bars = res[0], snap = res[1];
+          if (snap) volRenderTop(snap);
+          volRender(sym, bars, snap ? snap[sym] : null);
+          if (!bars && !snap) {
+            volSetStatus("Volume data for " + sym + " could not be loaded — please check your internet connection and try again.", "err");
+          } else if (!bars) {
+            volSetStatus("Daily volume history for " + sym + " is unavailable right now — today's figures are shown above.", "");
+          } else if (!snap) {
+            volSetStatus("Live figures for " + sym + " are unavailable right now — the session history is shown above.", "");
+          } else {
+            volSetStatus("", "");
+          }
+        });
+      }
+      function volSearch() {
+        var raw = document.getElementById("volInput").value.trim().toUpperCase().replace(/^PSX:/, "").replace(/[^A-Z0-9]/g, "");
+        if (!raw) { volSetStatus("Please enter a stock symbol first — e.g. OGDC, HBL, LUCK.", "err"); return; }
+        document.getElementById("volInput").value = raw;
+        volLoad(raw);
+      }
+      document.getElementById("volBtn").addEventListener("click", volSearch);
+      document.getElementById("volInput").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); volSearch(); } });
+      // Default stock: OGDC loads with the page, like Advance Charting
+      volLoad("OGDC");
 
       render();
       runScan();
