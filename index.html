@@ -558,7 +558,7 @@
           </button>
           <span class="scan-status" id="scanStatus" role="status" aria-live="polite">A live scan starts automatically when this page opens.</span>
         </div>
-        <p class="base-info" id="baseInfo">Daily results are compared against the saved baseline from 25 Nov 2026 (477 stocks covered).</p>
+        <p class="base-info" id="baseInfo">Daily setups are checked against the previous bar's values — a BUY or SELL setup that formed on the latest Daily bar appears in a single scan, no second scan needed.</p>
         <div class="coverage" id="coverageInfo" aria-live="polite">
           <span>Universe: <strong id="covTotal">—</strong></span>
           <span>Fetched: <strong id="covFetched">—</strong></span>
@@ -891,7 +891,7 @@
       function updateBaseInfo() {
         var el = document.getElementById("baseInfo");
         if (curTF === "1D") {
-          el.textContent = "Daily results are compared against the saved baseline from 25 Nov 2026 (477 stocks covered).";
+          el.textContent = "Daily setups are checked against the previous bar's values — a BUY or SELL setup that formed on the latest Daily bar appears in a single scan, no second scan needed.";
         } else {
           el.textContent = TF_LABEL[curTF] + " setups are checked against the previous bar's values — a BUY or SELL setup that formed on the latest " + TF_LABEL[curTF] + " bar appears in a single scan, no second scan needed.";
         }
@@ -900,9 +900,11 @@
       // --- Enhanced paginated fetch: fetches ALL pages so no stock is missed ---
       function fetchPage(suffix, start, end) {
         var columns = ["name", "close", "change", "volume", "EMA9" + suffix, "EMA26" + suffix];
-        // Non-daily timeframes also fetch the PREVIOUS bar's EMAs (EMA9[1] / EMA26[1]),
+        // Every timeframe also fetches the PREVIOUS bar's EMAs (EMA9[1] / EMA26[1]),
         // so a cross that formed on the latest bar is detected in a single scan.
-        if (suffix) { columns.push("EMA9[1]" + suffix, "EMA26[1]" + suffix); }
+        // For Daily the suffix is empty, so these are the plain "EMA9[1]" / "EMA26[1]"
+        // columns — the previous daily bar's values.
+        columns.push("EMA9[1]" + suffix, "EMA26[1]" + suffix);
         // ATR for this timeframe — used by the stock detail window's suggested levels
         columns.push("ATR" + suffix);
         var body = JSON.stringify({
@@ -996,7 +998,7 @@
           var sym = (row.s || "").split(":")[1];
           if (!sym) return;
           var d = row.d || [];
-          var rec = { s: sym, p: numOr(d[1], 0), c: numOr(d[2], 0), v: numOr(d[3], 0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7], atr: d[curTF === "1D" ? 6 : 8] };
+          var rec = { s: sym, p: numOr(d[1], 0), c: numOr(d[2], 0), v: numOr(d[3], 0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7], atr: d[8] };
           // Keep the record with EMA data if duplicate appears
           if (!snap[sym] || (typeof rec.e9==="number" && typeof snap[sym].e9!=="number")) snap[sym] = rec;
         });
@@ -1028,12 +1030,10 @@
 
         // Did TradingView return previous-bar EMAs for this timeframe?
         var hasPrevBar = false;
-        if (curTF !== "1D") {
-          Object.keys(snap).forEach(function (sym) {
-            var r = snap[sym];
-            if (typeof r.pe9 === "number" && typeof r.pe26 === "number") hasPrevBar = true;
-          });
-        }
+        Object.keys(snap).forEach(function (sym) {
+          var r = snap[sym];
+          if (typeof r.pe9 === "number" && typeof r.pe26 === "number") hasPrevBar = true;
+        });
 
         if (!base && !hasPrevBar) {
           baselineOnly = true;
@@ -1043,10 +1043,11 @@
             var r = snap[sym];
             if (typeof r.e9 !== "number" || typeof r.e26 !== "number") return;
             var prev;
-            // Small timeframes: the previous BAR is the reference, so a setup that
-            // formed on the latest bar shows up in this very scan. Fall back to the
-            // session baseline only when previous-bar values are missing.
-            if (curTF !== "1D" && typeof r.pe9 === "number" && typeof r.pe26 === "number") prev = sgn(r.pe9 - r.pe26);
+            // Every timeframe (Daily included): the previous BAR is the reference,
+            // so a setup that formed on the latest bar shows up in this very scan.
+            // Fall back to the saved/session baseline only when previous-bar
+            // values are missing.
+            if (typeof r.pe9 === "number" && typeof r.pe26 === "number") prev = sgn(r.pe9 - r.pe26);
             else prev = base ? base[sym] : undefined;
             if (prev === undefined || prev === null || prev === 0) return;
             var today = sgn(r.e9 - r.e26);
@@ -1072,11 +1073,9 @@
           "In this live scan, data was available for <b>" + fmtNum(withEma) + " stocks</b> — <b>" +
           fmtNum(bull) + " are bullish</b> (fast average above slow average) and <b>" + fmtNum(bear) +
           " are bearish</b>. The overall market bias is " + tone + ". Fetched " + fmtNum(fetchedCount) + " of " + fmtNum(total) + " listed symbols.";
-        document.getElementById("ovSub").textContent = curTF === "1D"
-          ? "Daily setups are compared against the 25 Nov 2026 baseline (477 stocks) — stocks without a baseline value cannot appear in this list, but they are still counted in the coverage and can be checked with Manual Stock Check."
-          : (baselineOnly
-              ? "Previous-bar data was not available in this scan, so a session baseline has been set — setups for this timeframe will appear from the next scan."
-              : TF_LABEL[curTF] + " setups are detected by comparing the current values with the previous bar's values — a setup that formed on the latest bar shows up in the same scan.");
+        document.getElementById("ovSub").textContent = baselineOnly
+          ? "Previous-bar data was not available in this scan, so a session baseline has been set — setups for this timeframe will appear from the next scan."
+          : TF_LABEL[curTF] + " setups are detected by comparing the current values with the previous bar's values — a setup that formed on the latest bar shows up in the same scan.";
 
         if (baselineOnly) {
           setStatus("Live scan complete — " + fmtNum(fetchedCount) + " stocks fetched (" + fmtNum(total) + " in universe). " + TF_LABEL[curTF] + " baseline is set; setups will appear from the next scan.", "ok");
@@ -1148,7 +1147,7 @@
         var curr = sgn(rec.e9 - rec.e26);
         var prev = getBaselineSign(sym);
         var prevFromBar = false;
-        if (curTF !== "1D" && typeof rec.pe9 === "number" && typeof rec.pe26 === "number") { prev = sgn(rec.pe9 - rec.pe26); prevFromBar = true; }
+        if (typeof rec.pe9 === "number" && typeof rec.pe26 === "number") { prev = sgn(rec.pe9 - rec.pe26); prevFromBar = true; }
         var prevWhere = prevFromBar ? "on the previous bar" : "in the baseline";
         var freshWhen = (curTF === "1D") ? "today" : "on the latest bar";
         var gap = rec.e26 ? ((rec.e9 - rec.e26)/rec.e26*100) : 0;
@@ -1200,7 +1199,7 @@
       function fetchSingleSymbol(sym){
         var suf = TF_SUFFIX[curTF];
         var cols = ["name", "close", "change", "volume", "EMA9" + suf, "EMA26" + suf];
-        if (suf) { cols.push("EMA9[1]" + suf, "EMA26[1]" + suf); }
+        cols.push("EMA9[1]" + suf, "EMA26[1]" + suf);
         cols.push("ATR" + suf);
         var body = JSON.stringify({
           symbols: { tickers: ["PSX:" + sym], query: { types: [] } },
@@ -1237,13 +1236,13 @@
             var sym = (row.s||"").split(":")[1];
             if (sym === raw) {
               var d = row.d||[];
-              found = { s: sym, p: numOr(d[1],0), c: numOr(d[2],0), v: numOr(d[3],0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7], atr: (curTF === "1D" ? d[6] : d[8]) };
+              found = { s: sym, p: numOr(d[1],0), c: numOr(d[2],0), v: numOr(d[3],0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7], atr: d[8] };
             }
           });
           if (!found && rows.length) {
             var d0 = rows[0].d||[];
             var s0 = (rows[0].s||"").split(":")[1];
-            if (s0) found = { s: s0, p: numOr(d0[1],0), c: numOr(d0[2],0), v: numOr(d0[3],0), e9: d0[4], e26: d0[5], pe9: d0[6], pe26: d0[7], atr: (curTF === "1D" ? d0[6] : d0[8]) };
+            if (s0) found = { s: s0, p: numOr(d0[1],0), c: numOr(d0[2],0), v: numOr(d0[3],0), e9: d0[4], e26: d0[5], pe9: d0[6], pe26: d0[7], atr: d0[8] };
           }
           if (!found) {
             // Fallback to last scan cache
@@ -1542,7 +1541,7 @@
               var sym2 = (row.s || "").split(":")[1];
               if (sym2 === rec.s) {
                 var d = row.d || [];
-                fresh = { p: numOr(d[1], rec.p), c: numOr(d[2], rec.c), atr: (curTF === "1D" ? d[6] : d[8]) };
+                fresh = { p: numOr(d[1], rec.p), c: numOr(d[2], rec.c), atr: d[8] };
               }
             });
             if (fresh && typeof fresh.atr === "number" && isFinite(fresh.atr) && fresh.atr > 0
