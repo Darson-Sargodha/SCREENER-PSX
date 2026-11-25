@@ -8,4 +8,3 @@ Daily crosses are compared against the 23 Nov 2026 baseline. Other timeframes bu
 
 Screener signals only — not investment advice.
 
-Live page: https://darson-sargodha.github.io/psx-ema-screener/
