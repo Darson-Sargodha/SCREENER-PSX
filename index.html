@@ -354,7 +354,7 @@
         border-bottom: 1px solid var(--line); background: var(--panel-2); font-weight: 700;
       }
       tbody tr + tr td { border-top: 1px solid var(--line); }
-      tbody tr { transition: background .12s ease; }
+      tbody tr { transition: background .12s ease; cursor: pointer; }
       tbody tr:hover { background: var(--panel-2); }
       td.sym { font-weight: 800; letter-spacing: .01em; }
       td.sym button { all:unset; cursor:pointer; font:inherit; color:inherit; }
@@ -364,6 +364,66 @@
       .chg-dn { color: var(--red); font-weight: 600; }
       .chg-flat { color: var(--ink-2); font-weight: 600; }
       .empty-msg { padding: 18px; color: var(--ink-2); font-size: 14.5px; display: none; }
+
+      /* ---------- Stock detail window ---------- */
+      .modal-overlay {
+        position: fixed; inset: 0; z-index: 200; display: none;
+        align-items: center; justify-content: center; padding: 22px;
+        background: rgba(3, 9, 18, .66);
+      }
+      .modal-overlay.open { display: flex; }
+      .modal-panel {
+        background: var(--panel); color: var(--ink);
+        width: 100%; max-width: 880px; max-height: 92vh; overflow-y: auto;
+        border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .modal-overlay.open .modal-panel { animation: modalIn .22s ease-out; }
+        @keyframes modalIn { from { transform: translateY(10px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+      }
+      .modal-head { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px 14px; }
+      .modal-title-wrap { flex: 1 1 auto; min-width: 0; }
+      .modal-symrow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+      .modal-sym { font-size: 26px; font-weight: 800; letter-spacing: .01em; line-height: 1; }
+      .setup-badge { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 4px 11px; }
+      .setup-badge.buy { background: var(--buy-soft); color: var(--buy); }
+      .setup-badge.sell { background: var(--red-soft); color: var(--red); }
+      .modal-price { margin-top: 7px; font-size: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+      .modal-price #dPrice { font-weight: 600; font-size: 19px; }
+      .modal-tf { color: var(--ink-2); font-size: 13.5px; font-weight: 600; }
+      .modal-close {
+        flex: none; width: 40px; height: 40px; min-height: 40px; padding: 0;
+        border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2);
+        color: var(--ink); font-size: 22px; line-height: 1;
+        display: inline-flex; align-items: center; justify-content: center;
+      }
+      .modal-close:hover { border-color: var(--red); color: var(--red); }
+      .tv-wrap { height: 440px; margin: 0 20px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #131722; }
+      .tv-wrap .tradingview-widget-container { height: 100%; width: 100%; }
+      .setup-box { padding: 16px 20px 4px; }
+      .setup-box h3 { margin: 0 0 10px; font-size: 16px; font-weight: 800; }
+      .setup-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+      .setup-cell { background: var(--panel-2); border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; }
+      .setup-cell .k { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); font-weight: 700; }
+      .setup-cell .val { font-size: 17px; font-weight: 600; margin-top: 3px; }
+      .setup-cell .sub { font-size: 12px; color: var(--ink-2); font-weight: 600; margin-top: 2px; min-height: 15px; }
+      .setup-cell.sl .val { color: var(--red); }
+      .setup-cell.tp .val { color: var(--buy); }
+      .modal-disclaimer {
+        margin: 14px 20px 20px; background: var(--red-soft); border: 1px solid var(--red);
+        border-radius: 12px; padding: 13px 15px; font-size: 13.5px; line-height: 1.6; color: var(--ink);
+      }
+      .modal-disclaimer strong { color: var(--red); }
+      #verdictBox.has-detail { cursor: pointer; }
+      @media (max-width: 720px) {
+        .modal-overlay { padding: 0; align-items: flex-end; }
+        .modal-panel { border-radius: 18px 18px 0 0; max-height: 94vh; }
+        .modal-head { padding: 16px 14px 12px; }
+        .tv-wrap { height: 300px; margin: 0 14px; }
+        .setup-box { padding: 14px 14px 2px; }
+        .setup-grid { grid-template-columns: repeat(2, 1fr); }
+        .modal-disclaimer { margin: 12px 14px 16px; }
+      }
 
       /* ---------- Notes & footer ---------- */
       .notes { margin-top: 36px; display: grid; grid-template-columns: 1fr; gap: 14px; }
@@ -551,6 +611,7 @@
             <div class="cell"><div class="k">Current Position</div><div class="val" id="vCurr">—</div></div>
             <div class="cell"><div class="k">Checked At</div><div class="val" id="vTime" style="font-size:12.5px;">—</div></div>
           </div>
+          <button class="btn-main" id="manualDetailBtn" type="button" style="display:none; margin-top:12px;">View Chart, Stop Loss &amp; Targets</button>
           <p style="margin:10px 0 0; font-size:13px; color:var(--ink-2);">This is <strong>not</strong> a buy signal or a sell signal, and not a recommendation. It is a technical screening result for information only — always do your own research. See the Disclaimer in the footer.</p>
         </div>
       </div>
@@ -635,6 +696,39 @@
       </footer>
     </main>
 
+    <!-- Stock detail window: TradingView chart + suggested Entry / Stop Loss / Targets -->
+    <div class="modal-overlay" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="dSym">
+      <div class="modal-panel">
+        <div class="modal-head">
+          <div class="modal-title-wrap">
+            <div class="modal-symrow">
+              <span class="modal-sym" id="dSym">—</span>
+              <span class="setup-badge buy" id="dBadge">—</span>
+            </div>
+            <div class="modal-price">
+              <span class="mono" id="dPrice">—</span>
+              <span class="mono" id="dChg">—</span>
+              <span class="modal-tf" id="dTf">—</span>
+            </div>
+          </div>
+          <button class="modal-close" id="detailClose" type="button" aria-label="Close stock detail">&times;</button>
+        </div>
+        <div class="tv-wrap" id="tvChart"></div>
+        <div class="setup-box">
+          <h3>Suggested Setup</h3>
+          <div class="setup-grid">
+            <div class="setup-cell"><div class="k">Entry</div><div class="val mono" id="dEntry">—</div><div class="sub">&nbsp;</div></div>
+            <div class="setup-cell sl"><div class="k">Stop Loss</div><div class="val mono" id="dSL">—</div><div class="sub" id="dSLSub">—</div></div>
+            <div class="setup-cell tp"><div class="k">Take Profit 1</div><div class="val mono" id="dTP1">—</div><div class="sub" id="dTP1Sub">—</div></div>
+            <div class="setup-cell tp"><div class="k">Take Profit 2</div><div class="val mono" id="dTP2">—</div><div class="sub" id="dTP2Sub">—</div></div>
+          </div>
+        </div>
+        <div class="modal-disclaimer">
+          <strong>Disclaimer:</strong> The Entry, Stop Loss and Take Profit levels shown above are computer-generated suggestions, provided for information, education and research purposes only. They are <strong>NOT buy signals and NOT sell signals</strong>, and they are not investment advice, financial advice, or a recommendation to buy, sell, or hold any stock. Nothing here is a guarantee of profit or of any future result — trading and investing involve substantial risk, including the possible loss of your capital. <strong>We shall not be responsible or liable for any loss, damage, or claim arising directly or indirectly from the use of these levels or of this tool.</strong> Always conduct your own independent research and, where appropriate, consult a licensed financial advisor before making any investment decision.
+        </div>
+      </div>
+    </div>
+
     <script>
       var CUR = {
         tf: "1D", live: false, baselineOnly: false,
@@ -679,6 +773,7 @@
 
       var TF_SUFFIX = { "1D": "", "1W": "|1W", "4H": "|240", "1H": "|60", "15m": "|15" };
       var TF_LABEL = { "1D": "Daily", "1W": "Weekly", "4H": "4H", "1H": "1H", "15m": "15m" };
+      var TF_INTERVAL = { "1D": "D", "1W": "W", "4H": "240", "1H": "60", "15m": "15" };
       var curTF = "1D";
       var sessionBase = {};
       var scanning = false;
@@ -695,7 +790,7 @@
 
       function rowHtml(x) {
         return "<tr>" +
-          '<td class="sym" data-label="Symbol"><button type="button" data-check-sym="' + esc(x.s) + '" title="Check ' + esc(x.s) + '">' + esc(x.s) + "</button></td>" +
+          '<td class="sym" data-label="Symbol"><button type="button" title="View ' + esc(x.s) + ' chart, stop loss &amp; targets">' + esc(x.s) + "</button></td>" +
           '<td class="num" data-label="Price (Rs)">' + fmtPrice(x.p) + "</td>" +
           '<td class="num ' + chgClass(x.c) + '" data-label="Change %">' + fmtChg(x.c) + "</td>" +
           '<td class="num" data-label="Volume">' + fmtNum(x.v) + "</td>" +
@@ -717,6 +812,10 @@
         [["buy", "buyBody", "buyEmpty", "buyCount", "BUY"], ["sell", "sellBody", "sellEmpty", "sellCount", "SELL"]].forEach(function (cfg) {
           var list = sorted(CUR[cfg[0]], key).filter(function (x) { return !q || x.s.indexOf(q) !== -1; });
           document.getElementById(cfg[1]).innerHTML = list.map(rowHtml).join("");
+          // Clicking a row opens that stock's detail window (chart + suggested levels)
+          Array.prototype.forEach.call(document.getElementById(cfg[1]).querySelectorAll("tr"), function (tr, i) {
+            tr.addEventListener("click", function () { openDetail(list[i], cfg[4], cfg[4] + " — Fresh Setup"); });
+          });
           var emptyEl = document.getElementById(cfg[2]);
           emptyEl.style.display = list.length ? "none" : "block";
           if (!list.length) {
@@ -739,14 +838,6 @@
         document.getElementById("covEma").textContent = fmtNum(CUR.withEma);
         var denom = lastTotalCount || CUR.total || 0;
         document.getElementById("covPct").textContent = denom ? Math.round((CUR.withEma/denom)*100) + "% with data" : "—";
-        // wire row symbol clicks to manual check
-        Array.prototype.forEach.call(document.querySelectorAll("[data-check-sym]"), function(btn){
-          btn.addEventListener("click", function(){
-            document.getElementById("manualInput").value = btn.getAttribute("data-check-sym");
-            checkManual();
-            document.getElementById("manualCheck").scrollIntoView({behavior:"smooth", block:"start"});
-          });
-        });
       }
       document.getElementById("symSearch").addEventListener("input", render);
       document.getElementById("sortSel").addEventListener("change", render);
@@ -797,6 +888,8 @@
         // Non-daily timeframes also fetch the PREVIOUS bar's EMAs (EMA9[1] / EMA26[1]),
         // so a cross that formed on the latest bar is detected in a single scan.
         if (suffix) { columns.push("EMA9[1]" + suffix, "EMA26[1]" + suffix); }
+        // ATR for this timeframe — used by the stock detail window's suggested levels
+        columns.push("ATR" + suffix);
         var body = JSON.stringify({
           symbols: { query: { types: ["stock"] }, tickers: [] },
           columns: columns,
@@ -888,7 +981,7 @@
           var sym = (row.s || "").split(":")[1];
           if (!sym) return;
           var d = row.d || [];
-          var rec = { s: sym, p: numOr(d[1], 0), c: numOr(d[2], 0), v: numOr(d[3], 0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7] };
+          var rec = { s: sym, p: numOr(d[1], 0), c: numOr(d[2], 0), v: numOr(d[3], 0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7], atr: d[curTF === "1D" ? 6 : 8] };
           // Keep the record with EMA data if duplicate appears
           if (!snap[sym] || (typeof rec.e9==="number" && typeof snap[sym].e9!=="number")) snap[sym] = rec;
         });
@@ -996,6 +1089,7 @@
       var manualStatus = document.getElementById("manualStatus");
       var manualResult = document.getElementById("manualResult");
       var checking = false;
+      var manualDetail = null; // { rec, side, label } for the detail window, set by showManualResult
       function setManualStatus(msg, cls){ manualStatus.textContent = msg; manualStatus.className = "manual-status" + (cls ? " " + cls : ""); }
 
       function getBaselineSign(sym){
@@ -1030,6 +1124,9 @@
           document.getElementById("vVol").textContent = fmtNum(rec.v);
           document.getElementById("vPrev").textContent = "—";
           document.getElementById("vCurr").textContent = "—";
+          manualDetail = null;
+          document.getElementById("manualDetailBtn").style.display = "none";
+          document.getElementById("verdictBox").classList.remove("has-detail");
           manualResult.classList.add("show");
           return;
         }
@@ -1048,24 +1145,29 @@
         document.getElementById("vPrev").textContent = prev===null ? "No baseline" : (prev>0 ? "Fast Avg was ABOVE" : (prev<0 ? "Fast Avg was BELOW" : "Equal"));
 
         var box = document.getElementById("verdictBox");
+        var dSide = null;
         if (prev !== null && prev < 0 && curr > 0) {
           box.className = "verdict buy";
           document.getElementById("vLabel").textContent = "Fresh Bullish Setup · " + TF_LABEL[curTF];
+          dSide = "BUY";
           document.getElementById("vTitle").textContent = "BUY — Fresh Setup";
           document.getElementById("vDesc").textContent = sym + " has just moved up: its fast average was below the slow average " + prevWhere + " and is now above it. This is a fresh BUY setup on the " + TF_LABEL[curTF] + " timeframe.";
         } else if (prev !== null && prev > 0 && curr < 0) {
           box.className = "verdict sell";
           document.getElementById("vLabel").textContent = "Fresh Bearish Setup · " + TF_LABEL[curTF];
+          dSide = "SELL";
           document.getElementById("vTitle").textContent = "SELL — Fresh Setup";
           document.getElementById("vDesc").textContent = sym + " has just moved down: its fast average was above the slow average " + prevWhere + " and is now below it. This is a fresh SELL setup on the " + TF_LABEL[curTF] + " timeframe.";
         } else if (curr > 0) {
           box.className = "verdict buy";
           document.getElementById("vLabel").textContent = "Bullish Trend · No Fresh Setup · " + TF_LABEL[curTF];
+          dSide = "BUY";
           document.getElementById("vTitle").textContent = "BUY Side — Bullish";
           document.getElementById("vDesc").textContent = sym + " is in a bullish position: its fast average (" + fmtPrice(rec.e9) + ") is above its slow average (" + fmtPrice(rec.e26) + "). No fresh setup " + freshWhen + " — the uptrend was already in place.";
         } else if (curr < 0) {
           box.className = "verdict sell";
           document.getElementById("vLabel").textContent = "Bearish Trend · No Fresh Setup · " + TF_LABEL[curTF];
+          dSide = "SELL";
           document.getElementById("vTitle").textContent = "SELL Side — Bearish";
           document.getElementById("vDesc").textContent = sym + " is in a bearish position: its fast average (" + fmtPrice(rec.e9) + ") is below its slow average (" + fmtPrice(rec.e26) + "). No fresh setup " + freshWhen + " — the downtrend was already in place.";
         } else {
@@ -1074,6 +1176,9 @@
           document.getElementById("vTitle").textContent = "NEUTRAL";
           document.getElementById("vDesc").textContent = sym + "'s fast and slow averages are equal right now — no clear BUY or SELL direction on the " + TF_LABEL[curTF] + " timeframe.";
         }
+        manualDetail = dSide ? { rec: rec, side: dSide, label: document.getElementById("vTitle").textContent } : null;
+        document.getElementById("manualDetailBtn").style.display = manualDetail ? "" : "none";
+        box.classList.toggle("has-detail", !!manualDetail);
         manualResult.classList.add("show");
       }
 
@@ -1081,6 +1186,7 @@
         var suf = TF_SUFFIX[curTF];
         var cols = ["name", "close", "change", "volume", "EMA9" + suf, "EMA26" + suf];
         if (suf) { cols.push("EMA9[1]" + suf, "EMA26[1]" + suf); }
+        cols.push("ATR" + suf);
         var body = JSON.stringify({
           symbols: { tickers: ["PSX:" + sym], query: { types: [] } },
           columns: cols,
@@ -1116,13 +1222,13 @@
             var sym = (row.s||"").split(":")[1];
             if (sym === raw) {
               var d = row.d||[];
-              found = { s: sym, p: numOr(d[1],0), c: numOr(d[2],0), v: numOr(d[3],0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7] };
+              found = { s: sym, p: numOr(d[1],0), c: numOr(d[2],0), v: numOr(d[3],0), e9: d[4], e26: d[5], pe9: d[6], pe26: d[7], atr: (curTF === "1D" ? d[6] : d[8]) };
             }
           });
           if (!found && rows.length) {
             var d0 = rows[0].d||[];
             var s0 = (rows[0].s||"").split(":")[1];
-            if (s0) found = { s: s0, p: numOr(d0[1],0), c: numOr(d0[2],0), v: numOr(d0[3],0), e9: d0[4], e26: d0[5], pe9: d0[6], pe26: d0[7] };
+            if (s0) found = { s: s0, p: numOr(d0[1],0), c: numOr(d0[2],0), v: numOr(d0[3],0), e9: d0[4], e26: d0[5], pe9: d0[6], pe26: d0[7], atr: (curTF === "1D" ? d0[6] : d0[8]) };
           }
           if (!found) {
             // Fallback to last scan cache
@@ -1154,6 +1260,110 @@
           document.getElementById("manualInput").value = b.getAttribute("data-sym");
           checkManual();
         });
+      });
+
+      // ---------- Stock detail window (TradingView chart + suggested levels) ----------
+      var detailRec = null, detailSide = "BUY";
+      function computeLevels(price, atr, side) {
+        var risk = (typeof atr === "number" && isFinite(atr) && atr > 0) ? 1.5 * atr : price * 0.02;
+        var entry = price, sl, tp1, tp2;
+        if (side === "SELL") { sl = entry + risk; tp1 = entry - 2 * risk; tp2 = entry - 3 * risk; }
+        else { sl = entry - risk; tp1 = entry + 2 * risk; tp2 = entry + 3 * risk; }
+        return { entry: entry, sl: sl, tp1: tp1, tp2: tp2, risk: risk };
+      }
+      function renderLevels(rec, side) {
+        var lv = computeLevels(rec.p, rec.atr, side);
+        document.getElementById("dEntry").textContent = "Rs " + fmtPrice(lv.entry);
+        document.getElementById("dSL").textContent = "Rs " + fmtPrice(lv.sl);
+        document.getElementById("dTP1").textContent = "Rs " + fmtPrice(lv.tp1);
+        document.getElementById("dTP2").textContent = "Rs " + fmtPrice(lv.tp2);
+        document.getElementById("dSLSub").textContent = "Risk Rs " + fmtPrice(lv.risk) + " / share";
+        document.getElementById("dTP1Sub").textContent = "Reward Rs " + fmtPrice(Math.abs(lv.tp1 - lv.entry)) + " · R:R 1:2";
+        document.getElementById("dTP2Sub").textContent = "Reward Rs " + fmtPrice(Math.abs(lv.tp2 - lv.entry)) + " · R:R 1:3";
+      }
+      function loadTvChart(sym) {
+        var wrap = document.getElementById("tvChart");
+        wrap.innerHTML = "";
+        var container = document.createElement("div");
+        container.className = "tradingview-widget-container";
+        var widget = document.createElement("div");
+        widget.className = "tradingview-widget-container__widget";
+        widget.style.height = "100%";
+        widget.style.width = "100%";
+        container.appendChild(widget);
+        wrap.appendChild(container);
+        var cfg = {
+          autosize: true,
+          symbol: "PSX:" + sym,
+          interval: TF_INTERVAL[curTF] || "D",
+          timezone: "Asia/Karachi",
+          theme: "dark",
+          style: "1",
+          locale: "en",
+          allow_symbol_change: false,
+          support_host: "https://www.tradingview.com"
+        };
+        var s = document.createElement("script");
+        s.type = "text/javascript";
+        s.async = true;
+        s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+        s.innerHTML = JSON.stringify(cfg);
+        container.appendChild(s);
+      }
+      function openDetail(rec, side, label) {
+        if (!rec || !rec.s) return;
+        detailRec = rec; detailSide = side;
+        document.getElementById("dSym").textContent = rec.s;
+        var badge = document.getElementById("dBadge");
+        badge.textContent = label || (side + " — Fresh Setup");
+        badge.className = "setup-badge " + (side === "SELL" ? "sell" : "buy");
+        document.getElementById("dPrice").textContent = "Rs " + fmtPrice(rec.p);
+        var chgEl = document.getElementById("dChg");
+        chgEl.textContent = fmtChg(rec.c);
+        chgEl.className = "mono " + chgClass(rec.c);
+        document.getElementById("dTf").textContent = TF_LABEL[curTF] + " timeframe · PSX:" + rec.s;
+        renderLevels(rec, side);
+        loadTvChart(rec.s);
+        document.getElementById("detailModal").classList.add("open");
+        document.body.style.overflow = "hidden";
+        // Records without ATR (e.g. the saved snapshot) get a live lookup so the
+        // levels refine to the real values; if it fails, the levels already shown stay.
+        if (!(typeof rec.atr === "number" && isFinite(rec.atr) && rec.atr > 0)) {
+          fetchSingleSymbol(rec.s).then(function (data) {
+            var rows = data.data || [], fresh = null;
+            rows.forEach(function (row) {
+              var sym2 = (row.s || "").split(":")[1];
+              if (sym2 === rec.s) {
+                var d = row.d || [];
+                fresh = { p: numOr(d[1], rec.p), c: numOr(d[2], rec.c), atr: (curTF === "1D" ? d[6] : d[8]) };
+              }
+            });
+            if (fresh && typeof fresh.atr === "number" && isFinite(fresh.atr) && fresh.atr > 0
+                && document.getElementById("detailModal").classList.contains("open")
+                && detailRec && detailRec.s === rec.s) {
+              detailRec.p = fresh.p; detailRec.c = fresh.c; detailRec.atr = fresh.atr;
+              document.getElementById("dPrice").textContent = "Rs " + fmtPrice(fresh.p);
+              var ce = document.getElementById("dChg");
+              ce.textContent = fmtChg(fresh.c);
+              ce.className = "mono " + chgClass(fresh.c);
+              renderLevels(detailRec, detailSide);
+            }
+          }).catch(function () { /* levels already shown stay as they are */ });
+        }
+      }
+      function closeDetail() {
+        document.getElementById("detailModal").classList.remove("open");
+        document.getElementById("tvChart").innerHTML = "";
+        document.body.style.overflow = "";
+      }
+      document.getElementById("detailClose").addEventListener("click", closeDetail);
+      document.getElementById("detailModal").addEventListener("click", function (e) { if (e.target === this) closeDetail(); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeDetail(); });
+      document.getElementById("manualDetailBtn").addEventListener("click", function () {
+        if (manualDetail) openDetail(manualDetail.rec, manualDetail.side, manualDetail.label);
+      });
+      document.getElementById("verdictBox").addEventListener("click", function () {
+        if (manualDetail) openDetail(manualDetail.rec, manualDetail.side, manualDetail.label);
       });
 
       render();
