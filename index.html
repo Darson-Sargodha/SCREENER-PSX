@@ -326,7 +326,7 @@
       .adv-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
       .adv-wrap { position:relative; height:460px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#131722; }
       .adv-pill-layer { position:absolute; inset:0; z-index:5; overflow:hidden; pointer-events:none; }
-      .adv-pill { position:absolute; font-size:11.5px; font-weight:800; letter-spacing:.05em; line-height:1.3; color:#fff; padding:3px 8px; border-radius:999px; white-space:nowrap; box-shadow:0 1px 5px rgba(0,0,0,.5); }
+      .adv-pill { position:absolute; font-size:16px; font-weight:800; letter-spacing:0; line-height:1.3; color:#fff; padding:3px 8px; border-radius:999px; white-space:nowrap; box-shadow:0 1px 5px rgba(0,0,0,.5); }
       .adv-pill.buy { background:#16a34a; transform:translate(-50%, 9px); }
       .adv-pill.sell { background:#dc2626; transform:translate(-50%, calc(-100% - 9px)); }
       .adv-note { margin:10px 0 0; font-size:13px; color:var(--ink-2); }
@@ -1828,7 +1828,7 @@
           if (x === null || x === undefined) continue;
           var y = advCandle.priceToCoordinate(sg.type === "BUY" ? bar.low : bar.high);
           if (y === null || y === undefined) continue;
-          html += '<span class="adv-pill ' + (sg.type === "BUY" ? "buy" : "sell") + '" style="left:' + x.toFixed(1) + "px;top:" + y.toFixed(1) + 'px">' + (sg.type === "BUY" ? "▲ BUY" : "▼ SELL") + "</span>";
+          html += '<span class="adv-pill ' + (sg.type === "BUY" ? "buy" : "sell") + '" style="left:' + x.toFixed(1) + "px;top:" + y.toFixed(1) + 'px">' + (sg.type === "BUY" ? "▲" : "▼") + "</span>";
         }
         advOverlayEl.innerHTML = html;
       }
