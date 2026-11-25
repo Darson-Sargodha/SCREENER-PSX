@@ -1276,15 +1276,23 @@
 
       // ---------- Stock detail window (price chart + suggested levels) ----------
       var detailRec = null, detailSide = "BUY", detailLevels = null;
-      function computeLevels(price, atr, side) {
-        var risk = (typeof atr === "number" && isFinite(atr) && atr > 0) ? 1.5 * atr : price * 0.02;
-        var entry = price, sl, tp1, tp2;
-        if (side === "SELL") { sl = entry + risk; tp1 = entry - 2 * risk; tp2 = entry - 3 * risk; }
-        else { sl = entry - risk; tp1 = entry + 2 * risk; tp2 = entry + 3 * risk; }
-        return { entry: entry, sl: sl, tp1: tp1, tp2: tp2, risk: risk };
+      function computeLevels(price, slow, atr, side) {
+        function r2(x) { return Math.round(x * 100) / 100; }
+        var hasSlow = (typeof slow === "number" && isFinite(slow) && slow > 0);
+        var entry = hasSlow ? slow : price, sl, tp1, tp2, risk;
+        if (typeof atr === "number" && isFinite(atr) && atr > 0) {
+          risk = 1.5 * atr;
+          if (side === "SELL") { sl = entry + risk; tp1 = entry - 2 * risk; tp2 = entry - 3 * risk; }
+          else { sl = entry - risk; tp1 = entry + 2 * risk; tp2 = entry + 3 * risk; }
+        } else if (side === "SELL") {
+          sl = entry * 1.02; tp1 = entry * 0.96; tp2 = entry * 0.94;
+        } else {
+          sl = entry * 0.98; tp1 = entry * 1.04; tp2 = entry * 1.06;
+        }
+        return { entry: r2(entry), sl: r2(sl), tp1: r2(tp1), tp2: r2(tp2), risk: r2(Math.abs(entry - sl)) };
       }
       function renderLevels(rec, side) {
-        var lv = computeLevels(rec.p, rec.atr, side);
+        var lv = computeLevels(rec.p, rec.e26, rec.atr, side);
         detailLevels = lv;
         document.getElementById("dEntry").textContent = "Rs " + fmtPrice(lv.entry);
         document.getElementById("dSL").textContent = "Rs " + fmtPrice(lv.sl);
