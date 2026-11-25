@@ -214,7 +214,7 @@
       .chg-flat { color: var(--ink-2); font-weight: 600; }
       .empty-msg { padding: 18px; color: var(--ink-2); font-size: 14.5px; display: none; }
 
-      .notes { margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .notes { margin-top: 34px; display: grid; grid-template-columns: 1fr; gap: 14px; }
       .note {
         background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
         padding: 16px 18px; box-shadow: var(--shadow);
@@ -228,6 +228,14 @@
       .note b { color: var(--ink); }
       footer { margin-top: 30px; color: var(--ink-2); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 14px; }
       footer p { margin: 0 0 6px; }
+      .disclaimer {
+        margin-top: 14px; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow);
+      }
+      .disclaimer h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: .01em; }
+      .disclaimer p { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 0 0 8px; }
+      .disclaimer p:last-child { margin-bottom: 0; }
+      .disclaimer strong { color: var(--ink); }
 
       @media (prefers-reduced-motion: no-preference) {
         .btn-main.busy { animation: pulse 1.1s ease-in-out infinite; }
@@ -350,7 +358,7 @@
             <div class="cell"><div class="k">Current Position</div><div class="val" id="vCurr">—</div></div>
             <div class="cell"><div class="k">Checked At</div><div class="val" id="vTime" style="font-size:12.5px;">—</div></div>
           </div>
-          <p style="margin:10px 0 0; font-size:13px; color:var(--ink-2);">This is an EMA crossover signal only — not a buy/sell recommendation. Always do your own research.</p>
+          <p style="margin:10px 0 0; font-size:13px; color:var(--ink-2);">This is <strong>not</strong> a buy signal or a sell signal, and not a recommendation. It is a technical screening result for information only — always do your own research. See the Disclaimer in the footer.</p>
         </div>
       </div>
 
@@ -406,17 +414,6 @@
 
       <div class="notes">
         <div class="note">
-          <h3>How This Screener Works</h3>
-          <ul>
-            <li><b>BUY:</b> EMA 9 (short) moves from below to above EMA 26 (long) — it was below before, now it is above.</li>
-            <li><b>SELL:</b> EMA 9 crosses from above to below EMA 26.</li>
-            <li>To detect a fresh cross, live EMA values are compared with the previous values — so only <b>new crossovers</b> are shown, not stocks already in a trend. The Daily baseline is from 23 Nov 2026. On the smaller timeframes (Weekly, 4H, 1H, 15m) the comparison is against the <b>previous bar's</b> EMA 9 / EMA 26, so a setup that formed on the latest bar is reported in the same scan.</li>
-            <li>On intraday timeframes the current bar is still forming while the market is open — a cross shown during the session is confirmed once that bar closes.</li>
-            <li>A signal is confirmed when the bar for that timeframe closes — the final Daily signal is after the 3:30 PM close.</li>
-            <li><b>Enhanced scan:</b> The scan now fetches the full PSX universe in pages, de-duplicates symbols, retries on failure, and reports coverage — so no listed stock is skipped because of a single-page limit.</li>
-          </ul>
-        </div>
-        <div class="note">
           <h3>Overall Market Picture</h3>
           <p id="ovMain">
             In the 23 Nov 2026 baseline of 426 stocks, <b>289 were bullish</b> (EMA 9 above EMA 26) and
@@ -430,7 +427,13 @@
 
       <footer>
         <p>Data source: TradingView scanner (PSX-listed stocks) · Internet is required for a live scan · Daily baseline: 23 Nov 2026 · Saved snapshot: 25 Nov 2026.</p>
-        <p>These are EMA crossover signals only — not buy/sell recommendations. Make decisions based on your own research and risk.</p>
+        <div class="disclaimer">
+          <h3>Disclaimer — Please Read Carefully</h3>
+          <p><strong>These are NOT buy signals and NOT sell signals.</strong> The results shown on this page — including any list or label that uses the words “BUY” or “SELL” — are <strong>not</strong> buy signals, sell signals, trading calls, tips, recommendations, or advice to buy, sell, or hold any stock or security. They are only computer-generated technical screening results, shown purely for informational, educational, and research purposes.</p>
+          <p>Nothing on this page constitutes investment advice, financial advice, or a solicitation to buy or sell any security, and nothing here should be taken as a guarantee of profit or of any future result. No person should buy or sell any stock solely on the basis of the information shown by this tool.</p>
+          <p>Trading and investing in the Pakistan Stock Exchange involves substantial risk, including the possible loss of your entire capital. Market data may be delayed, incomplete, or inaccurate, and past performance is not a guarantee of future results. Always conduct your own independent research and, where appropriate, consult a licensed financial advisor before making any investment decision.</p>
+          <p><strong>We shall not be responsible or liable for any loss, damage, or claim — financial or otherwise — arising directly or indirectly from the use of this tool, its results, or the information presented on this page.</strong> By using this tool, you acknowledge and agree that all investment and trading decisions are made solely by you, at your own risk and discretion.</p>
+        </div>
       </footer>
     </main>
 
