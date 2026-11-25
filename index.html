@@ -5,47 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="data:," />
-    <title>PSX EMA Screener — Live Tool</title>
+    <title>Scanify — PSX EMA Screener</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #f4f6f3;
+        --bg: #f4f6f9;
         --panel: #ffffff;
-        --panel-2: #eef1ec;
-        --ink: #131a15;
-        --ink-2: #4c5a50;
-        --line: #d9dfd7;
-        --green: #0d7a3e;
-        --green-soft: #e2f3e8;
-        --red: #c22727;
-        --red-soft: #fbe7e7;
+        --panel-2: #edf0f4;
+        --ink: #0c1322;
+        --ink-2: #5a6577;
+        --line: #e0e5ec;
+        --green: #0a8a4d;
+        --green-strong: #06703d;
+        --green-soft: #e2f4ea;
+        --red: #d92d20;
+        --red-soft: #fdecea;
         --gold: #b97e0a;
         --gold-soft: #faf0da;
         --btn-ink: #ffffff;
-        --shadow: 0 1px 2px rgba(16, 30, 20, .06), 0 8px 24px rgba(16, 30, 20, .05);
+        --seg-active-bg: #0c1322;
+        --seg-active-ink: #ffffff;
+        --topbar-bg: rgba(255, 255, 255, .88);
+        --hero-1: #10203c;
+        --hero-2: #0a1424;
+        --hero-3: #0a2a1a;
+        --on-hero: #f0f5f1;
+        --on-hero-2: rgba(233, 240, 236, .78);
+        --hero-line: rgba(255, 255, 255, .16);
+        --hero-chip: rgba(255, 255, 255, .08);
+        --shadow: 0 1px 2px rgba(12, 19, 34, .05), 0 12px 32px rgba(12, 19, 34, .07);
+        --shadow-btn: 0 6px 18px rgba(6, 112, 61, .30);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #0a0f0b;
-          --panel: #111712;
-          --panel-2: #171f18;
-          --ink: #e8efe9;
-          --ink-2: #9db3a2;
-          --line: #263027;
-          --green: #35c26e;
-          --green-soft: #12301e;
+          --bg: #090d13;
+          --panel: #10161f;
+          --panel-2: #171f2a;
+          --ink: #e9edf3;
+          --ink-2: #93a1b5;
+          --line: #222d3d;
+          --green: #2fbf71;
+          --green-strong: #2fbf71;
+          --green-soft: #0e2b1d;
           --red: #ff6b5e;
           --red-soft: #38150f;
           --gold: #e3a82b;
           --gold-soft: #2e2410;
-          --btn-ink: #08130b;
-          --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+          --btn-ink: #04140b;
+          --seg-active-bg: #e9edf3;
+          --seg-active-ink: #0b101c;
+          --topbar-bg: rgba(9, 13, 19, .88);
+          --hero-1: #12233f;
+          --hero-2: #0c1626;
+          --hero-3: #0c2b1c;
+          --shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 32px rgba(0,0,0,.4);
+          --shadow-btn: 0 6px 18px rgba(0,0,0,.45);
         }
       }
       * { box-sizing: border-box; }
       html { -webkit-text-size-adjust: 100%; }
+      @media (prefers-reduced-motion: no-preference) {
+        html { scroll-behavior: smooth; }
+      }
       body {
         margin: 0;
         background: var(--bg);
@@ -53,29 +76,98 @@
         font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
         line-height: 1.5;
       }
+      ::selection { background: var(--green-soft); }
       .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
-      .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 16px 48px; }
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 22px 16px 56px; }
 
-      .scan-head { padding: 10px 2px 0; }
-      .scan-head h1 {
-        font-size: clamp(26px, 5.4vw, 40px);
-        line-height: 1.12; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px;
+      /* ---------- Top bar ---------- */
+      .topbar {
+        position: sticky; top: 0; z-index: 50;
+        background: var(--topbar-bg);
+        -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--line);
       }
-      .scan-head h1 .thin { color: var(--green); }
-      .scan-meta { color: var(--ink-2); font-size: 15px; margin: 0 0 4px; max-width: 68ch; }
-      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+      .topbar-in {
+        max-width: 1080px; margin: 0 auto; padding: 10px 16px;
+        display: flex; align-items: center; gap: 18px;
+      }
+      .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-width: 0; }
+      .brand-mark {
+        width: 36px; height: 36px; flex: none; border-radius: 10px;
+        background: linear-gradient(140deg, #12b76a, #06703d);
+        display: inline-flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 12px rgba(6, 112, 61, .35);
+      }
+      .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+      .brand-sub {
+        font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+        color: var(--ink-2); border-left: 1px solid var(--line); padding-left: 10px; line-height: 1.25;
+      }
+      .topnav { display: flex; gap: 4px; margin-left: auto; }
+      .topnav a {
+        color: var(--ink-2); text-decoration: none; font-size: 14px; font-weight: 600;
+        padding: 8px 12px; border-radius: 8px;
+      }
+      .topnav a:hover { color: var(--ink); background: var(--panel-2); }
+      .live-pill {
+        display: inline-flex; align-items: center; gap: 7px; flex: none;
+        font-size: 12.5px; font-weight: 700; color: var(--green);
+        background: var(--green-soft); border: 1px solid var(--line);
+        border-radius: 999px; padding: 6px 12px;
+      }
+      .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #2fbf71; flex: none; }
+      @media (prefers-reduced-motion: no-preference) {
+        .pulse-dot { animation: pdot 1.8s ease-in-out infinite; }
+        @keyframes pdot { 0%, 100% { box-shadow: 0 0 0 0 rgba(47,191,113,.45); } 55% { box-shadow: 0 0 0 6px rgba(47,191,113,0); } }
+      }
+
+      /* ---------- Hero ---------- */
+      .scan-head {
+        position: relative; overflow: hidden;
+        background: linear-gradient(155deg, var(--hero-1) 0%, var(--hero-2) 52%, var(--hero-3) 135%);
+        color: var(--on-hero);
+        border: 1px solid var(--hero-line);
+        border-radius: 20px;
+        padding: 30px 30px 28px;
+        box-shadow: var(--shadow);
+      }
+      .scan-head::before {
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        background-image:
+          linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+        background-size: 30px 30px;
+      }
+      .scan-head > * { position: relative; }
+      .hero-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+        color: var(--on-hero); background: var(--hero-chip);
+        border: 1px solid var(--hero-line); border-radius: 999px; padding: 6px 13px;
+        margin-bottom: 16px;
+      }
+      .scan-head h1 {
+        font-size: clamp(29px, 5.6vw, 44px);
+        line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; margin: 0 0 10px; max-width: 20ch;
+      }
+      .scan-head h1 .thin { color: #3ddc84; }
+      .scan-meta { color: var(--on-hero-2); font-size: 15.5px; margin: 0; max-width: 68ch; }
+      .scan-meta strong { color: var(--on-hero); }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
       .chip {
         display: inline-flex; align-items: center; gap: 7px;
         background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
         padding: 6px 13px; font-size: 13.5px; font-weight: 600;
       }
-      .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
+      .scan-head .chip { background: var(--hero-chip); border-color: var(--hero-line); color: var(--on-hero); }
+      .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #2fbf71; flex: none; }
 
+      /* ---------- Tool panel ---------- */
       .tool {
-        margin-top: 20px; background: var(--panel); border: 1px solid var(--line);
-        border-radius: 16px; box-shadow: var(--shadow); padding: 18px;
+        margin-top: 16px; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 18px; box-shadow: var(--shadow); padding: 20px;
       }
-      .tool-label { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 8px; }
+      .tool-label { font-size: 12.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 9px; }
       .tf-group {
         display: flex; flex-wrap: wrap; gap: 4px;
         background: var(--panel-2); border-radius: 12px; padding: 4px;
@@ -84,16 +176,24 @@
         flex: 1 1 auto; min-height: 44px; border: 0; border-radius: 9px; background: transparent;
         color: var(--ink-2); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; padding: 8px 14px;
       }
-      .tf-btn.active { background: var(--green); color: var(--btn-ink); }
-      .tool-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 14px; }
+      .tf-btn:hover { color: var(--ink); }
+      .tf-btn.active { background: var(--seg-active-bg); color: var(--seg-active-ink); box-shadow: 0 2px 8px rgba(12,19,34,.25); }
+      .tool-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
       button, .btn {
-        min-height: 44px; border-radius: 10px; border: 1px solid transparent;
+        min-height: 44px; border-radius: 11px; border: 1px solid transparent;
         font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
         padding: 10px 18px; display: inline-flex; align-items: center; gap: 9px;
         text-decoration: none;
       }
-      button:focus-visible, input:focus-visible, select:focus-visible, .tf-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-      .btn-main { background: var(--green); color: var(--btn-ink); }
+      button:focus-visible, input:focus-visible, select:focus-visible, .tf-btn:focus-visible, a:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+      .btn-main {
+        background: linear-gradient(140deg, #12b76a, var(--green-strong));
+        color: var(--btn-ink); box-shadow: var(--shadow-btn);
+      }
+      @media (prefers-color-scheme: dark) {
+        .btn-main { background: var(--green); }
+      }
+      .btn-main:hover { filter: brightness(1.05); }
       .btn-main:active { transform: translateY(1px); }
       .btn-main[disabled] { opacity: .65; cursor: wait; }
       .btn-ghost { background: var(--panel-2); color: var(--ink); border-color: var(--line); }
@@ -105,31 +205,41 @@
       .coverage span { font-size:12.5px; font-weight:600; background:var(--panel-2); border:1px solid var(--line); padding:5px 10px; border-radius:999px; color:var(--ink-2); }
       .coverage span strong { color:var(--ink); }
 
+      /* ---------- KPI stats ---------- */
       .stats {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 0;
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0 0;
       }
       .stat {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-        padding: 14px 16px; box-shadow: var(--shadow);
+        background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+        padding: 16px 18px; box-shadow: var(--shadow);
       }
-      .stat .num { font-size: clamp(24px, 4.6vw, 34px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
-      .stat .lbl { color: var(--ink-2); font-size: 13px; font-weight: 600; margin-top: 6px; }
+      .stat-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+      .stat .lbl { color: var(--ink-2); font-size: 12.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+      .stat-ic {
+        width: 30px; height: 30px; flex: none; border-radius: 9px;
+        background: var(--panel-2); color: var(--ink-2);
+        display: inline-flex; align-items: center; justify-content: center;
+      }
+      .stat.buy .stat-ic { background: var(--green-soft); color: var(--green); }
+      .stat.sell .stat-ic { background: var(--red-soft); color: var(--red); }
+      .stat .num { font-size: clamp(26px, 4.6vw, 36px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
       .stat.buy .num { color: var(--green); }
       .stat.sell .num { color: var(--red); }
       .result-meta { margin: 14px 2px 0; font-size: 14px; color: var(--ink-2); font-weight: 600; }
 
-      /* Manual check */
+      /* ---------- Manual check ---------- */
       .manual {
         margin-top: 22px; background: var(--panel); border: 1px solid var(--line);
-        border-radius: 16px; box-shadow: var(--shadow); padding: 18px;
+        border-radius: 18px; box-shadow: var(--shadow); padding: 20px;
       }
       .manual h2 { margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-0.01em; }
       .manual p.sub { margin:0 0 14px; color:var(--ink-2); font-size:14.5px; max-width:66ch; }
       .manual-row { display:flex; flex-wrap:wrap; gap:10px; }
       .manual-row .field {
         flex:1 1 220px; display:flex; align-items:center; gap:8px;
-        background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:0 12px;
+        background:var(--bg); border:1px solid var(--line); border-radius:11px; padding:0 12px;
       }
+      .manual-row .field:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
       .manual-row input {
         flex:1; min-height:48px; border:0; background:transparent; color:var(--ink);
         font:inherit; font-size:16px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; outline:none; min-width:0;
@@ -137,12 +247,13 @@
       .manual-row input::placeholder { text-transform:none; letter-spacing:0; font-weight:500; color:var(--ink-2); }
       .manual-suggest { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
       .manual-suggest button {
-        min-height:32px; padding:4px 10px; font-size:13px; border-radius:999px; background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
+        min-height:32px; padding:4px 12px; font-size:13px; border-radius:999px; background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
       }
+      .manual-suggest button:hover { border-color: var(--green); color: var(--green); }
       .manual-result { margin-top:16px; display:none; }
       .manual-result.show { display:block; }
       .verdict {
-        border-radius:12px; padding:16px; display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; justify-content:space-between;
+        border-radius:14px; padding:18px; display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; justify-content:space-between;
         border:1px solid var(--line);
       }
       .verdict.buy { background:var(--green-soft); border-color:var(--green); }
@@ -158,20 +269,22 @@
       .verdict .v-sym .sym-big { font-size:22px; font-weight:800; letter-spacing:.02em; }
       .verdict .v-sym .price-big { font-family:"IBM Plex Mono",monospace; font-size:18px; font-weight:600; margin-top:2px; }
       .manual-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
-      .manual-grid .cell { background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+      .manual-grid .cell { background:var(--panel-2); border:1px solid var(--line); border-radius:11px; padding:10px 12px; }
       .manual-grid .cell .k { font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-2); font-weight:700; }
       .manual-grid .cell .val { font-family:"IBM Plex Mono",monospace; font-size:15px; font-weight:600; margin-top:3px; }
       .manual-status { margin-top:10px; font-size:14px; font-weight:600; color:var(--ink-2); min-height:20px; }
       .manual-status.err { color:var(--red); }
       .manual-status.ok { color:var(--green); }
 
+      /* ---------- Results ---------- */
       .controls {
-        display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 26px 0 4px;
+        display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 28px 0 4px;
       }
       .controls .search {
         flex: 1 1 210px; display: flex; align-items: center; gap: 8px;
-        background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px;
+        background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 0 12px;
       }
+      .controls .search:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
       .controls .search svg { flex: none; color: var(--ink-2); }
       .controls input[type="search"] {
         flex: 1; min-height: 44px; border: 0; background: transparent; color: var(--ink);
@@ -179,13 +292,16 @@
       }
       .controls label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
       .controls select {
-        min-height: 44px; border-radius: 10px; border: 1px solid var(--line);
+        min-height: 44px; border-radius: 11px; border: 1px solid var(--line);
         background: var(--panel); color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; padding: 0 10px;
       }
 
-      section.signal { margin-top: 26px; }
-      .sig-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-      .sig-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+      section.signal { margin-top: 28px; }
+      .sig-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+      .sig-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+      .sig-head h2::before { content: ""; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+      #buySection .sig-head h2::before { background: var(--green); }
+      #sellSection .sig-head h2::before { background: var(--red); }
       .sig-head .rule { color: var(--ink-2); font-size: 14px; }
       .count-badge {
         font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 14px;
@@ -194,30 +310,33 @@
       .buy-badge { background: var(--green-soft); color: var(--green); }
       .sell-badge { background: var(--red-soft); color: var(--red); }
       .table-card {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+        background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
         box-shadow: var(--shadow); overflow: hidden;
       }
       table { width: 100%; border-collapse: collapse; }
-      th, td { padding: 11px 14px; text-align: right; }
+      th, td { padding: 12px 16px; text-align: right; }
       th:first-child, td:first-child { text-align: left; }
       thead th {
         font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2);
         border-bottom: 1px solid var(--line); background: var(--panel-2); font-weight: 700;
       }
       tbody tr + tr td { border-top: 1px solid var(--line); }
+      tbody tr { transition: background .12s ease; }
+      tbody tr:hover { background: var(--panel-2); }
       td.sym { font-weight: 800; letter-spacing: .01em; }
       td.sym button { all:unset; cursor:pointer; font:inherit; color:inherit; }
-      td.sym button:hover { text-decoration:underline; }
+      td.sym button:hover { text-decoration:underline; color: var(--green); }
       td.num, th.num { font-family: "IBM Plex Mono", monospace; font-size: 14.5px; }
       .chg-up { color: var(--green); font-weight: 600; }
       .chg-dn { color: var(--red); font-weight: 600; }
       .chg-flat { color: var(--ink-2); font-weight: 600; }
       .empty-msg { padding: 18px; color: var(--ink-2); font-size: 14.5px; display: none; }
 
-      .notes { margin-top: 34px; display: grid; grid-template-columns: 1fr; gap: 14px; }
+      /* ---------- Notes & footer ---------- */
+      .notes { margin-top: 36px; display: grid; grid-template-columns: 1fr; gap: 14px; }
       .note {
-        background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-        padding: 16px 18px; box-shadow: var(--shadow);
+        background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+        padding: 18px 20px; box-shadow: var(--shadow);
       }
       .note h3 { margin: 0 0 8px; font-size: 16px; font-weight: 800; }
       .note p, .note li { font-size: 14.5px; color: var(--ink-2); }
@@ -226,11 +345,15 @@
       .note ul { margin: 0; padding-left: 18px; }
       .note li + li { margin-top: 5px; }
       .note b { color: var(--ink); }
-      footer { margin-top: 30px; color: var(--ink-2); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 14px; }
+      footer { margin-top: 34px; color: var(--ink-2); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 16px; }
       footer p { margin: 0 0 6px; }
+      footer .foot-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; color: var(--ink); }
+      footer .foot-brand .brand-mark { width: 26px; height: 26px; border-radius: 7px; box-shadow: none; }
+      footer .foot-brand .fb-name { font-weight: 800; font-size: 15px; letter-spacing: -0.01em; }
+      footer .foot-brand .fb-sub { color: var(--ink-2); font-weight: 600; font-size: 13px; }
       .disclaimer {
         margin-top: 14px; background: var(--panel); border: 1px solid var(--line);
-        border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow);
+        border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow);
       }
       .disclaimer h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: .01em; }
       .disclaimer p { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 0 0 8px; }
@@ -242,6 +365,10 @@
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
       }
       @media (max-width: 720px) {
+        .topnav { display: none; }
+        .brand-sub { display: none; }
+        .live-pill { margin-left: auto; }
+        .scan-head { padding: 24px 20px 22px; border-radius: 16px; }
         .stats { grid-template-columns: repeat(2, 1fr); }
         .notes { grid-template-columns: 1fr; }
         .manual-grid { grid-template-columns: repeat(2,1fr); }
@@ -264,23 +391,40 @@
     </style>
   </head>
   <body>
-    <main class="wrap">
+    <header class="topbar">
+      <div class="topbar-in">
+        <a class="brand" href="#top" aria-label="Scanify — back to top">
+          <span class="brand-mark"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-6"/><path d="M11 20V5"/><path d="M17 20v-9"/><path d="M2.5 20h19"/></svg></span>
+          <span class="brand-name">Scanify</span>
+          <span class="brand-sub">PSX EMA<br />Screener</span>
+        </a>
+        <nav class="topnav" aria-label="Page sections">
+          <a href="#screener">Screener</a>
+          <a href="#manualCheck">Manual Check</a>
+          <a href="#buySection">Results</a>
+          <a href="#marketOverview">Overview</a>
+        </nav>
+        <span class="live-pill"><span class="pulse-dot"></span> Live data</span>
+      </div>
+    </header>
+    <main class="wrap" id="top">
 
       <div class="scan-head">
-        <h1>PSX EMA Screener <span class="thin">— Live Scan</span></h1>
+        <div class="hero-badge"><span class="pulse-dot"></span> Scanify &middot; Live PSX Scanner</div>
+        <h1>Fresh EMA crossovers, <span class="thin">across the entire PSX.</span></h1>
         <p class="scan-meta">
-          Select a timeframe and run a scan — this tool checks every PSX-listed stock on TradingView for an
+          Select a timeframe and run a scan &mdash; Scanify checks every PSX-listed stock on TradingView for an
           EMA 9 / EMA 26 crossover. <strong>BUY</strong> when EMA 9 crosses up through EMA 26,
           <strong>SELL</strong> when EMA 9 crosses down through EMA 26.
         </p>
         <div class="chips">
-          <span class="chip"><span class="dot"></span> Data source: TradingView — Live</span>
+          <span class="chip"><span class="dot"></span> Data source: TradingView &mdash; Live</span>
           <span class="chip">Daily baseline: 23 Nov 2026</span>
-          <span class="chip">Full PSX universe — paginated scan</span>
+          <span class="chip">Full PSX universe &mdash; paginated scan</span>
         </div>
       </div>
 
-      <div class="tool">
+      <div class="tool" id="screener">
         <p class="tool-label">Timeframe</p>
         <div class="tf-group" role="group" aria-label="Select timeframe">
           <button type="button" class="tf-btn active" data-tf="1D" aria-pressed="true">Daily</button>
@@ -306,10 +450,10 @@
       </div>
 
       <div class="stats">
-        <div class="stat"><div class="num mono" id="statTotal">484</div><div class="lbl">Stocks scanned</div></div>
-        <div class="stat"><div class="num mono" id="statEma">477</div><div class="lbl">With EMA data</div></div>
-        <div class="stat buy"><div class="num mono" id="statBuy">16</div><div class="lbl">BUY crossovers</div></div>
-        <div class="stat sell"><div class="num mono" id="statSell">12</div><div class="lbl">SELL crossovers</div></div>
+        <div class="stat"><div class="stat-top"><span class="lbl">Stocks scanned</span><span class="stat-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span></div><div class="num mono" id="statTotal">484</div></div>
+        <div class="stat"><div class="stat-top"><span class="lbl">With EMA data</span><span class="stat-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span></div><div class="num mono" id="statEma">477</div></div>
+        <div class="stat buy"><div class="stat-top"><span class="lbl">BUY crossovers</span><span class="stat-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span></div><div class="num mono" id="statBuy">16</div></div>
+        <div class="stat sell"><div class="stat-top"><span class="lbl">SELL crossovers</span><span class="stat-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 6 6 4-4 8 8"/><path d="M21 11v6h-6"/></svg></span></div><div class="num mono" id="statSell">12</div></div>
       </div>
       <p class="result-meta" id="resultMeta">Saved scan · Daily · Wed 25 Nov 2026 · Values captured while the market was open (provisional)</p>
 
@@ -413,7 +557,7 @@
       </section>
 
       <div class="notes">
-        <div class="note">
+        <div class="note" id="marketOverview">
           <h3>Overall Market Picture</h3>
           <p id="ovMain">
             In the 23 Nov 2026 baseline of 426 stocks, <b>289 were bullish</b> (EMA 9 above EMA 26) and
@@ -426,6 +570,11 @@
       </div>
 
       <footer>
+        <div class="foot-brand">
+          <span class="brand-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-6"/><path d="M11 20V5"/><path d="M17 20v-9"/><path d="M2.5 20h19"/></svg></span>
+          <span class="fb-name">Scanify</span>
+          <span class="fb-sub">&mdash; PSX EMA Screener</span>
+        </div>
         <p>Data source: TradingView scanner (PSX-listed stocks) · Internet is required for a live scan · Daily baseline: 23 Nov 2026 · Saved snapshot: 25 Nov 2026.</p>
         <div class="disclaimer">
           <h3>Disclaimer — Please Read Carefully</h3>
