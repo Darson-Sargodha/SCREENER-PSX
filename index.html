@@ -1295,12 +1295,16 @@
         document.getElementById("dTP2Sub").textContent = "Reward Rs " + fmtPrice(Math.abs(lv.tp2 - lv.entry)) + " · R:R 1:3";
         drawLevelLines();
       }
-      // ---------- Price chart (Lightweight Charts + Yahoo Finance OHLC) ----------
+      // ---------- Price chart (Lightweight Charts + baked OHLC, live refresh) ----------
       // PSX market data is not licensed for TradingView's embeddable widgets, so the
-      // chart is drawn with TradingView's open-source Lightweight Charts library from
-      // Yahoo Finance OHLC data instead; the "Open on TradingView" button links out
-      // to the full chart on tradingview.com, where every PSX symbol works.
-      var lwChart = null, lwSeries = null, lwLines = [], chartReq = 0, lwLibPromise = null;
+      // chart is drawn with TradingView's open-source Lightweight Charts library
+      // instead; the "Open on TradingView" button links out to the full chart on
+      // tradingview.com, where every PSX symbol works. Candles load FIRST from the
+      // baked data files on this same site (data/<tf>/<SYM>.json), so the chart
+      // never depends on an outside service; a live Yahoo Finance fetch through a
+      // proxy then runs in the background and only replaces the candles when it
+      // returns newer bars.
+      var lwChart = null, lwSeries = null, lwLines = [], chartReq = 0, lwLibPromise = null, chartBars = null;
       var YAHOO_TF = {
         "1D":  { range: "6mo", interval: "1d" },
         "1W":  { range: "2y",  interval: "1wk" },
@@ -1308,6 +1312,57 @@
         "1H":  { range: "1mo", interval: "60m" },
         "15m": { range: "5d",  interval: "15m" }
       };
+      var BAKED_TF = {
+        "1D":  { dir: "daily" },
+        "1W":  { dir: "weekly" },
+        "4H":  { dir: "hourly", agg: 4 },
+        "1H":  { dir: "hourly" },
+        "15m": { dir: "m15" }
+      };
+      function aggregateBars(bars, n) {
+        var out = [];
+        for (var j = 0; j < bars.length; j += n) {
+          var grp = bars.slice(j, j + n);
+          var hi = grp[0].high, lo = grp[0].low, vol = 0;
+          grp.forEach(function (b) { hi = Math.max(hi, b.high); lo = Math.min(lo, b.low); vol += b.volume || 0; });
+          out.push({ time: grp[0].time, open: grp[0].open, high: hi, low: lo, close: grp[grp.length - 1].close, volume: vol });
+        }
+        return out;
+      }
+      function fetchWithTimeout(url, ms) {
+        var ctrl = ("AbortController" in window) ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, ms) : null;
+        return fetch(url, ctrl ? { signal: ctrl.signal } : undefined).then(function (r) {
+          if (timer) clearTimeout(timer);
+          return r;
+        }, function (e) {
+          if (timer) clearTimeout(timer);
+          throw e;
+        });
+      }
+      function fetchBakedCandles(sym) {
+        var cfg = BAKED_TF[curTF] || BAKED_TF["1D"];
+        return fetch("data/" + cfg.dir + "/" + encodeURIComponent(sym) + ".json")
+          .then(function (r) { if (!r.ok) throw new Error("baked chart data not found"); return r.json(); })
+          .then(function (data) {
+            var raw = (data && data.bars) || [];
+            var bars = [];
+            raw.forEach(function (b) {
+              if (!b || b.length < 5) return;
+              var t = +b[0], o = +b[1], h = +b[2], l = +b[3], c = +b[4];
+              if (!isFinite(t) || !isFinite(o) || !isFinite(h) || !isFinite(l) || !isFinite(c)) return;
+              bars.push({ time: t, open: o, high: h, low: l, close: c, volume: +b[5] || 0 });
+            });
+            bars.sort(function (a, b) { return a.time - b.time; });
+            var dedup = [];
+            bars.forEach(function (b) {
+              if (dedup.length && dedup[dedup.length - 1].time === b.time) dedup[dedup.length - 1] = b;
+              else dedup.push(b);
+            });
+            if (cfg.agg) dedup = aggregateBars(dedup, cfg.agg);
+            return dedup;
+          });
+      }
       function loadLwLib() {
         if (window.LightweightCharts) return Promise.resolve();
         if (lwLibPromise) return lwLibPromise;
@@ -1326,7 +1381,7 @@
         var cfg = YAHOO_TF[curTF] || YAHOO_TF["1D"];
         var yUrl = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym + ".KA")
           + "?range=" + cfg.range + "&interval=" + cfg.interval;
-        return fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(yUrl))
+        return fetchWithTimeout("https://api.allorigins.win/get?url=" + encodeURIComponent(yUrl), 8000)
           .then(function (r) { if (!r.ok) throw new Error("chart data request failed"); return r.json(); })
           .then(function (wrapped) {
             var data = JSON.parse(wrapped.contents);
@@ -1340,22 +1395,13 @@
               if (o == null || h == null || l == null || c == null) continue;
               bars.push({ time: res.timestamp[i], open: o, high: h, low: l, close: c, volume: (q.volume && q.volume[i]) || 0 });
             }
-            if (cfg.agg) {
-              var out = [];
-              for (var j = 0; j < bars.length; j += cfg.agg) {
-                var grp = bars.slice(j, j + cfg.agg);
-                var hi = grp[0].high, lo = grp[0].low, vol = 0;
-                grp.forEach(function (b) { hi = Math.max(hi, b.high); lo = Math.min(lo, b.low); vol += b.volume || 0; });
-                out.push({ time: grp[0].time, open: grp[0].open, high: hi, low: lo, close: grp[grp.length - 1].close, volume: vol });
-              }
-              bars = out;
-            }
+            if (cfg.agg) bars = aggregateBars(bars, cfg.agg);
             return bars;
           });
       }
       function destroyChart() {
         if (lwChart) { try { lwChart.remove(); } catch (e) { /* already gone */ } }
-        lwChart = null; lwSeries = null; lwLines = [];
+        lwChart = null; lwSeries = null; lwLines = []; chartBars = null;
       }
       function drawLevelLines() {
         if (!lwSeries || !detailLevels || !window.LightweightCharts) return;
@@ -1379,46 +1425,75 @@
         destroyChart();
         wrap.innerHTML = '<div class="chart-msg"><div>' + html + "</div></div>";
       }
+      function drawChart(bars) {
+        var wrap = document.getElementById("tvChart");
+        chartBars = bars;
+        wrap.innerHTML = "";
+        lwChart = LightweightCharts.createChart(wrap, {
+          width: wrap.clientWidth,
+          height: wrap.clientHeight,
+          layout: {
+            background: { type: "solid", color: "#131722" },
+            textColor: "#c9d6e8",
+            fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
+            fontSize: 11
+          },
+          grid: {
+            vertLines: { color: "rgba(255,255,255,.06)" },
+            horzLines: { color: "rgba(255,255,255,.06)" }
+          },
+          rightPriceScale: { borderColor: "rgba(255,255,255,.18)" },
+          timeScale: { borderColor: "rgba(255,255,255,.18)", timeVisible: curTF !== "1D" && curTF !== "1W" }
+        });
+        lwSeries = lwChart.addCandlestickSeries({
+          upColor: "#38bdf8", downColor: "#ff6b5e",
+          wickUpColor: "#38bdf8", wickDownColor: "#ff6b5e",
+          borderVisible: false
+        });
+        lwSeries.setData(bars.map(function (b) {
+          return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
+        }));
+        lwChart.timeScale().fitContent();
+        drawLevelLines();
+      }
       function loadStockChart(sym) {
         var wrap = document.getElementById("tvChart");
         destroyChart();
         var req = ++chartReq;
         wrap.innerHTML = '<div class="chart-msg"><div>Loading the ' + sym + " chart (" + TF_LABEL[curTF] + ")&hellip;</div></div>";
         loadLwLib()
-          .then(function () { return fetchCandles(sym); })
-          .then(function (bars) {
+          .then(function () {
+            // Baked same-origin data first: the chart must draw even when the
+            // live proxy is down. A missing baked file just falls through.
+            return fetchBakedCandles(sym).catch(function () { return []; });
+          })
+          .then(function (baked) {
             if (req !== chartReq) return; // window closed or another stock opened meanwhile
-            if (!bars.length) {
-              showChartMsg("Chart data isn&rsquo;t available for <strong>" + sym + "</strong> in the chart feed right now. You can still view this stock on TradingView with the button below.");
+            if (baked && baked.length) {
+              drawChart(baked);
+              // Background live refresh: swap in the proxy bars only when they
+              // reach past the newest baked bar; any failure leaves the baked
+              // chart exactly as drawn.
+              fetchCandles(sym).then(function (live) {
+                if (req !== chartReq || !lwSeries || !chartBars) return;
+                if (live && live.length && live[live.length - 1].time > chartBars[chartBars.length - 1].time) {
+                  chartBars = live;
+                  lwSeries.setData(live.map(function (b) {
+                    return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
+                  }));
+                }
+              }).catch(function () { /* baked chart stays */ });
               return;
             }
-            wrap.innerHTML = "";
-            lwChart = LightweightCharts.createChart(wrap, {
-              width: wrap.clientWidth,
-              height: wrap.clientHeight,
-              layout: {
-                background: { type: "solid", color: "#131722" },
-                textColor: "#c9d6e8",
-                fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
-                fontSize: 11
-              },
-              grid: {
-                vertLines: { color: "rgba(255,255,255,.06)" },
-                horzLines: { color: "rgba(255,255,255,.06)" }
-              },
-              rightPriceScale: { borderColor: "rgba(255,255,255,.18)" },
-              timeScale: { borderColor: "rgba(255,255,255,.18)", timeVisible: curTF !== "1D" && curTF !== "1W" }
+            // No baked file for this symbol: fall back to the live feed alone.
+            return fetchCandles(sym).then(function (live) {
+              if (req !== chartReq) return;
+              if (!live || !live.length) {
+                showChartMsg("Chart data isn&rsquo;t available for <strong>" + sym + "</strong> in the chart feed right now. You can still view this stock on TradingView with the button below.");
+                return;
+              }
+              drawChart(live);
             });
-            lwSeries = lwChart.addCandlestickSeries({
-              upColor: "#38bdf8", downColor: "#ff6b5e",
-              wickUpColor: "#38bdf8", wickDownColor: "#ff6b5e",
-              borderVisible: false
-            });
-            lwSeries.setData(bars.map(function (b) {
-              return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
-            }));
-            lwChart.timeScale().fitContent();
-            drawLevelLines();
           })
           .catch(function () {
             if (req !== chartReq) return;
