@@ -1,1572 +1,717 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSX Screener — Cheetah Ranking Terminal</title>
-<style>
-/* ============================================================
-   THEME TOKENS
-   ============================================================ */
-:root{
-  --bg:#0A0D12; --bg-elevated:#0F131A; --surface:#131922; --surface-hover:#1A212C;
-  --border:#1F2733; --border-strong:#2B3646;
-  --text:#E7ECF2; --text-muted:#8492A6; --text-faint:#54606F;
-  --green:#35C98C; --green-dim:#1E4A3A;
-  --red:#EF5F72; --red-dim:#4A2230;
-  --gold:#EFB94B; --gold-dim:#4A3B1E;
-  --blue:#5B93F5; --blue-dim:#1E2E4A;
-  --purple:#9B87F5;
-  --mono:ui-monospace,SFMono-Regular,"SF Mono","Cascadia Code","Roboto Mono",Consolas,monospace;
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --radius:6px;
-  --shadow:0 8px 24px rgba(0,0,0,.35);
-}
-html[data-theme="light"]{
-  --bg:#F3F5F8; --bg-elevated:#FFFFFF; --surface:#FFFFFF; --surface-hover:#EEF1F6;
-  --border:#DFE4EC; --border-strong:#C6CEDA;
-  --text:#141A22; --text-muted:#5A6373; --text-faint:#8B93A2;
-  --green:#0E9A62; --green-dim:#D8F3E8;
-  --red:#D93A52; --red-dim:#FBDDE2;
-  --gold:#B4790A; --gold-dim:#FBEACB;
-  --blue:#2563EB; --blue-dim:#DCE7FD;
-  --shadow:0 8px 24px rgba(20,26,34,.12);
-}
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{
-  background:var(--bg); color:var(--text); font-family:var(--sans);
-  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
-}
-::selection{background:var(--blue-dim);}
-button,input,select{font-family:inherit;font-size:inherit;color:inherit;}
-a{color:inherit;}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;}
-.hidden{display:none !important;}
-.up{color:var(--green);}
-.down{color:var(--red);}
-.flat{color:var(--text-muted);}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>PSX EMA Screener — Live Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f4f6f3;
+        --panel: #ffffff;
+        --panel-2: #eef1ec;
+        --ink: #131a15;
+        --ink-2: #4c5a50;
+        --line: #d9dfd7;
+        --green: #0d7a3e;
+        --green-soft: #e2f3e8;
+        --red: #c22727;
+        --red-soft: #fbe7e7;
+        --gold: #b97e0a;
+        --gold-soft: #faf0da;
+        --btn-ink: #ffffff;
+        --shadow: 0 1px 2px rgba(16, 30, 20, .06), 0 8px 24px rgba(16, 30, 20, .05);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0f0b;
+          --panel: #111712;
+          --panel-2: #171f18;
+          --ink: #e8efe9;
+          --ink-2: #9db3a2;
+          --line: #263027;
+          --green: #35c26e;
+          --green-soft: #12301e;
+          --red: #ff6b5e;
+          --red-soft: #38150f;
+          --gold: #e3a82b;
+          --gold-soft: #2e2410;
+          --btn-ink: #08130b;
+          --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+        }
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+      .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+      .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 16px 48px; }
 
-/* ---------- layout shells ---------- */
-#app{min-height:100vh;display:flex;flex-direction:column;}
-.topnav{
-  display:flex;align-items:center;gap:4px;padding:0 16px;height:52px;
-  background:var(--bg-elevated);border-bottom:1px solid var(--border);
-  position:sticky;top:0;z-index:40;overflow-x:auto;
-}
-.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.2px;margin-right:18px;white-space:nowrap;}
-.brand .mark{width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,var(--green),var(--blue));display:inline-block;flex:none;}
-.navtabs{display:flex;gap:2px;flex:1;overflow-x:auto;}
-.navtab{
-  padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--text-muted);
-  font-size:13px;font-weight:500;white-space:nowrap;border:1px solid transparent;
-}
-.navtab:hover{background:var(--surface-hover);color:var(--text);}
-.navtab.active{background:var(--surface);color:var(--text);border-color:var(--border);}
-.navright{display:flex;align-items:center;gap:8px;margin-left:8px;}
-.icon-btn{
-  width:32px;height:32px;border-radius:6px;background:transparent;border:1px solid var(--border);
-  color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;
-}
-.icon-btn:hover{background:var(--surface-hover);color:var(--text);}
+      /* ---------- Header ---------- */
+      .scan-head { padding: 10px 2px 0; }
+      .scan-head h1 {
+        font-size: clamp(26px, 5.4vw, 40px);
+        line-height: 1.12; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px;
+      }
+      .scan-head h1 .thin { color: var(--green); }
+      .scan-meta { color: var(--ink-2); font-size: 15px; margin: 0 0 4px; max-width: 64ch; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+      .chip {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+        padding: 6px 13px; font-size: 13.5px; font-weight: 600;
+      }
+      .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
 
-.configbar{
-  display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:8px 16px;
-  background:var(--bg-elevated);border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted);
-}
-.configbar .dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);display:inline-block;margin-right:5px;}
-.configbar .dot.ok{background:var(--green);}
-.configbar .dot.warn{background:var(--gold);}
-.spacer{flex:1;}
-.btn{
-  padding:7px 12px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);
-  color:var(--text);cursor:pointer;font-weight:600;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;
-}
-.btn:hover{background:var(--surface-hover);}
-.btn.primary{background:var(--green);border-color:var(--green);color:#08150F;}
-.btn.primary:hover{filter:brightness(1.08);}
-.btn.ghost{background:transparent;}
-.btn.small{padding:5px 9px;font-size:11.5px;}
+      /* ---------- Live tool panel ---------- */
+      .tool {
+        margin-top: 20px; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 16px; box-shadow: var(--shadow); padding: 18px;
+      }
+      .tool-label { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 8px; }
+      .tf-group {
+        display: flex; flex-wrap: wrap; gap: 4px;
+        background: var(--panel-2); border-radius: 12px; padding: 4px;
+      }
+      .tf-btn {
+        flex: 1 1 auto; min-height: 44px; border: 0; border-radius: 9px; background: transparent;
+        color: var(--ink-2); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; padding: 8px 14px;
+      }
+      .tf-btn.active { background: var(--green); color: var(--btn-ink); }
+      .tool-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 14px; }
+      button, .btn {
+        min-height: 44px; border-radius: 10px; border: 1px solid transparent;
+        font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+        padding: 10px 18px; display: inline-flex; align-items: center; gap: 9px;
+        text-decoration: none;
+      }
+      button:focus-visible, input:focus-visible, select:focus-visible, .tf-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+      .btn-main { background: var(--green); color: var(--btn-ink); }
+      .btn-main:active { transform: translateY(1px); }
+      .btn-main[disabled] { opacity: .65; cursor: wait; }
+      .btn-ghost { background: var(--panel-2); color: var(--ink); border-color: var(--line); }
+      .scan-status { font-size: 14.5px; font-weight: 600; color: var(--ink-2); flex: 1 1 240px; min-height: 22px; }
+      .scan-status.ok { color: var(--green); }
+      .scan-status.err { color: var(--red); }
+      .base-info { margin: 12px 0 0; font-size: 13.5px; color: var(--ink-2); }
 
-main{flex:1;padding:18px 16px 60px;max-width:1560px;width:100%;margin:0 auto;}
+      /* ---------- Stats ---------- */
+      .stats {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 0;
+      }
+      .stat {
+        background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+        padding: 14px 16px; box-shadow: var(--shadow);
+      }
+      .stat .num { font-size: clamp(24px, 4.6vw, 34px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+      .stat .lbl { color: var(--ink-2); font-size: 13px; font-weight: 600; margin-top: 6px; }
+      .stat.buy .num { color: var(--green); }
+      .stat.sell .num { color: var(--red); }
+      .result-meta { margin: 14px 2px 0; font-size: 14px; color: var(--ink-2); font-weight: 600; }
 
-/* ---------- cards / dashboard ---------- */
-.grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;}
-.stat-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:12px 14px;
-}
-.stat-card .label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;}
-.stat-card .value{font-size:22px;font-weight:700;font-family:var(--mono);}
-.stat-card .sub{font-size:11px;color:var(--text-faint);margin-top:3px;}
+      /* ---------- Download band ---------- */
+      .download {
+        margin-top: 22px; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 16px; box-shadow: var(--shadow); padding: 18px;
+      }
+      .download h2 { margin: 0 0 4px; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+      .download p { margin: 0 0 14px; color: var(--ink-2); font-size: 14.5px; max-width: 66ch; }
+      .dl-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      .dl-note { margin-top: 12px; font-size: 13.5px; color: var(--ink-2); }
+      .dl-status { margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--green); min-height: 21px; }
 
-.panel{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:14px;margin-bottom:16px;
-}
-.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.panel-title{font-size:13px;font-weight:700;letter-spacing:.2px;}
-.panel-title .n{color:var(--text-muted);font-weight:500;margin-left:6px;}
+      /* ---------- Controls ---------- */
+      .controls {
+        display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 26px 0 4px;
+      }
+      .controls .search {
+        flex: 1 1 210px; display: flex; align-items: center; gap: 8px;
+        background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px;
+      }
+      .controls .search svg { flex: none; color: var(--ink-2); }
+      .controls input[type="search"] {
+        flex: 1; min-height: 44px; border: 0; background: transparent; color: var(--ink);
+        font: inherit; font-size: 15px; outline: none; min-width: 0;
+      }
+      .controls label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+      .controls select {
+        min-height: 44px; border-radius: 10px; border: 1px solid var(--line);
+        background: var(--panel); color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; padding: 0 10px;
+      }
 
-.grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.grid-5col{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
-@media(max-width:1100px){.grid-2col,.grid-5col{grid-template-columns:1fr 1fr;}}
-@media(max-width:640px){.grid-2col,.grid-5col{grid-template-columns:1fr;}}
+      /* ---------- Signal tables ---------- */
+      section.signal { margin-top: 26px; }
+      .sig-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+      .sig-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+      .sig-head .rule { color: var(--ink-2); font-size: 14px; }
+      .count-badge {
+        font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 14px;
+        border-radius: 999px; padding: 3px 11px;
+      }
+      .buy-badge { background: var(--green-soft); color: var(--green); }
+      .sell-badge { background: var(--red-soft); color: var(--red); }
+      .table-card {
+        background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+        box-shadow: var(--shadow); overflow: hidden;
+      }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 11px 14px; text-align: right; }
+      th:first-child, td:first-child { text-align: left; }
+      thead th {
+        font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2);
+        border-bottom: 1px solid var(--line); background: var(--panel-2); font-weight: 700;
+      }
+      tbody tr + tr td { border-top: 1px solid var(--line); }
+      td.sym { font-weight: 800; letter-spacing: .01em; }
+      td.num, th.num { font-family: "IBM Plex Mono", monospace; font-size: 14.5px; }
+      .chg-up { color: var(--green); font-weight: 600; }
+      .chg-dn { color: var(--red); font-weight: 600; }
+      .chg-flat { color: var(--ink-2); font-weight: 600; }
+      .empty-msg { padding: 18px; color: var(--ink-2); font-size: 14.5px; display: none; }
 
-.mini-row{display:flex;align-items:center;justify-content:space-between;padding:7px 4px;border-bottom:1px solid var(--border);font-size:12.5px;}
-.mini-row:last-child{border-bottom:none;}
-.mini-row .sym{font-weight:700;font-family:var(--mono);}
-.mini-row .co{color:var(--text-muted);font-size:11px;}
+      /* ---------- How it works / notes ---------- */
+      .notes { margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .note {
+        background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+        padding: 16px 18px; box-shadow: var(--shadow);
+      }
+      .note h3 { margin: 0 0 8px; font-size: 16px; font-weight: 800; }
+      .note p, .note li { font-size: 14.5px; color: var(--ink-2); }
+      .note p { margin: 0; }
+      .note p + p { margin-top: 8px; }
+      .note ul { margin: 0; padding-left: 18px; }
+      .note li + li { margin-top: 5px; }
+      .note b { color: var(--ink); }
+      footer { margin-top: 30px; color: var(--ink-2); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 14px; }
+      footer p { margin: 0 0 6px; }
 
-.badge{
-  display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;
-  font-size:11px;font-weight:700;font-family:var(--mono);
-}
-.badge.cheetah{background:var(--gold-dim);color:var(--gold);}
-.badge.strong{background:var(--green-dim);color:var(--green);}
-.badge.good{background:#3a3418;color:#E0C15A;}
-html[data-theme="light"] .badge.good{background:#FFF3CE;color:#8A6A00;}
-.badge.watch{background:#4a3218;color:#E0954F;}
-html[data-theme="light"] .badge.watch{background:#FEE6CE;color:#A0530A;}
-.badge.weak{background:var(--red-dim);color:var(--red);}
-.badge.incomplete{background:var(--surface-hover);color:var(--text-faint);border:1px dashed var(--border-strong);}
+      @media (prefers-reduced-motion: no-preference) {
+        .btn-main.busy { animation: pulse 1.1s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+      }
+      @media (max-width: 720px) {
+        .stats { grid-template-columns: repeat(2, 1fr); }
+        .notes { grid-template-columns: 1fr; }
+        .dl-actions button, .tool-actions .btn-main { flex: 1 1 100%; justify-content: center; }
+        .tf-btn { flex: 1 1 30%; }
+        /* Tables become stacked rows — no sideways scroll */
+        table, thead, tbody, tr, td { display: block; width: 100%; }
+        thead { display: none; }
+        tbody tr { padding: 12px 14px; }
+        tbody tr + tr { border-top: 1px solid var(--line); }
+        tbody tr td { border-top: 0 !important; padding: 2px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 14px; text-align: right; }
+        tbody tr td::before {
+          content: attr(data-label); font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+          color: var(--ink-2); font-weight: 700; text-align: left;
+        }
+        tbody tr td.sym { font-size: 18px; padding-bottom: 6px; }
+        tbody tr td.sym::before { content: "Symbol"; align-self: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
 
-/* ---------- table ---------- */
-.table-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
-.search-box{
-  display:flex;align-items:center;gap:6px;background:var(--bg-elevated);border:1px solid var(--border);
-  border-radius:6px;padding:6px 10px;min-width:220px;flex:1;max-width:320px;
-}
-.search-box input{background:transparent;border:none;outline:none;color:var(--text);width:100%;font-size:13px;}
-select.sel, input.field{
-  background:var(--bg-elevated);border:1px solid var(--border);border-radius:6px;color:var(--text);
-  padding:6px 9px;font-size:12.5px;
-}
-.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
-table.datatable{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1100px;}
-table.datatable thead th{
-  position:sticky;top:0;background:var(--bg-elevated);text-align:left;padding:9px 10px;
-  border-bottom:1px solid var(--border-strong);color:var(--text-muted);font-weight:600;
-  white-space:nowrap;cursor:pointer;user-select:none;font-size:11.5px;letter-spacing:.2px;
-}
-table.datatable thead th:hover{color:var(--text);}
-table.datatable thead th .arrow{opacity:.5;font-size:10px;margin-left:3px;}
-table.datatable tbody td{padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono);}
-table.datatable tbody tr{cursor:pointer;}
-table.datatable tbody tr:hover{background:var(--surface-hover);}
-table.datatable tbody td.txt{font-family:var(--sans);}
-.na{color:var(--text-faint);}
-.pagination{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:10px;font-size:12px;color:var(--text-muted);}
-
-/* ---------- filter panel (slide over) ---------- */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;}
-.slideover{
-  position:fixed;top:0;right:0;height:100%;width:380px;max-width:92vw;background:var(--bg-elevated);
-  border-left:1px solid var(--border);z-index:61;overflow-y:auto;box-shadow:var(--shadow);
-  display:flex;flex-direction:column;
-}
-.slideover .so-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
-.slideover .so-body{padding:14px 16px;flex:1;overflow-y:auto;}
-.slideover .so-foot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;}
-.filter-group{margin-bottom:16px;}
-.filter-group h4{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin:0 0 8px;}
-.range-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
-.range-row label{flex:1;font-size:12.5px;color:var(--text);}
-.range-row input{width:64px;padding:5px 6px;font-size:12px;}
-.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12.5px;}
-.chips{display:flex;flex-wrap:wrap;gap:6px;}
-.chip{padding:5px 10px;border-radius:99px;border:1px solid var(--border-strong);font-size:11.5px;cursor:pointer;background:var(--surface);}
-.chip.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
-.preset-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
-
-/* modal (import / detail) */
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;}
-.modal{background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow);}
-.modal .m-head{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid var(--border);}
-.modal .m-body{padding:16px;}
-.modal .m-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
-.dropzone{border:1.5px dashed var(--border-strong);border-radius:8px;padding:26px;text-align:center;color:var(--text-muted);cursor:pointer;}
-.dropzone:hover{background:var(--surface-hover);}
-.map-table{width:100%;font-size:12px;border-collapse:collapse;margin-top:10px;}
-.map-table td{padding:5px 6px;border-bottom:1px solid var(--border);}
-
-/* stock detail (large modal) */
-.detail-modal{max-width:920px;}
-.detail-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;}
-.detail-hero .px{font-size:30px;font-weight:700;font-family:var(--mono);}
-.tabs-row{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:14px 0;overflow-x:auto;}
-.tabs-row .t{padding:8px 12px;font-size:12.5px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
-.tabs-row .t.active{color:var(--text);border-color:var(--blue);}
-.kv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
-.kv{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:9px 10px;}
-.kv .k{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;}
-.kv .v{font-family:var(--mono);font-weight:700;font-size:14px;margin-top:2px;}
-.reason-list{list-style:none;padding:0;margin:0;}
-.reason-list li{padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px;display:flex;gap:8px;}
-.reason-list li:last-child{border:none;}
-.chart-range{display:flex;gap:4px;margin:8px 0;}
-canvas.chart{width:100%;height:180px;background:var(--surface);border:1px solid var(--border);border-radius:6px;}
-
-/* empty state */
-.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted);}
-.empty-state .big{font-size:38px;margin-bottom:10px;}
-.empty-state h3{color:var(--text);margin:6px 0;}
-
-footer.tiny{padding:14px 16px;color:var(--text-faint);font-size:11px;text-align:center;}
-.tooltip-wrap{position:relative;display:inline-block;}
-.tooltip-wrap .tip{
-  display:none;position:absolute;bottom:130%;left:50%;transform:translateX(-50%);
-  background:#000;color:#fff;padding:5px 8px;border-radius:5px;font-size:11px;white-space:nowrap;z-index:5;
-}
-.tooltip-wrap:hover .tip{display:block;}
-.flagbar{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
-.flag-pill{background:var(--red-dim);color:var(--red);padding:4px 9px;border-radius:99px;font-size:11px;font-weight:600;}
-.section-note{font-size:12px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);padding:10px 12px;border-radius:6px;margin-bottom:14px;}
-.code-block{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:12px;overflow-x:auto;white-space:pre;color:var(--text-muted);}
-.settings-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-.settings-table th,.settings-table td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);}
-.settings-table th{color:var(--text-muted);font-size:11px;text-transform:uppercase;}
-label.small-label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;}
-.inline-inputs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-</style>
-</head>
-<body>
-<div id="app">
-
-  <!-- ============= TOP NAV ============= -->
-  <div class="topnav">
-    <div class="brand"><span class="mark"></span>PSX SCREENER</div>
-    <div class="navtabs" id="navtabs">
-      <div class="navtab" data-view="dashboard">Dashboard</div>
-      <div class="navtab" data-view="stocks">Stocks</div>
-      <div class="navtab" data-view="cheetah">Cheetah</div>
-      <div class="navtab" data-view="growth">Growth</div>
-      <div class="navtab" data-view="value">Value</div>
-      <div class="navtab" data-view="dividend">Dividend</div>
-      <div class="navtab" data-view="momentum">Momentum</div>
-      <div class="navtab" data-view="settings">Settings</div>
-    </div>
-    <div class="navright">
-      <button class="icon-btn" id="themeToggle" title="Toggle theme">◐</button>
-    </div>
-  </div>
-
-  <!-- ============= CONFIG / STATUS BAR ============= -->
-  <div class="configbar">
-    <span><span class="dot" id="dataDot"></span><span id="dataStatusText">No data loaded</span></span>
-    <span>Source: <b id="dataSourceLabel" class="mono">—</b></span>
-    <span>Stocks: <b id="dataCountLabel" class="mono">0</b></span>
-    <span>Updated: <b id="dataUpdatedLabel" class="mono">—</b></span>
-    <span>Missing fields: <b id="dataMissingLabel" class="mono">0</b></span>
-    <div class="spacer"></div>
-    <button class="btn small" id="btnImport">⤓ Import Data</button>
-    <button class="btn small" id="btnLiveFetch">⟳ Fetch Live (configure)</button>
-    <button class="btn small" id="btnExportCsv">⤒ Export CSV</button>
-  </div>
-
-  <main>
-
-    <!-- ============= DASHBOARD VIEW ============= -->
-    <section id="view-dashboard">
-      <div class="grid-stats" id="dashStats"></div>
-      <div class="grid-2col">
-        <div class="panel"><div class="panel-head"><div class="panel-title">🔥 Top 10 Cheetah Stocks</div></div><div id="topCheetah"></div></div>
-        <div class="panel"><div class="panel-head"><div class="panel-title">📈 Top Growth Stocks</div></div><div id="topGrowth"></div></div>
+      <!-- ===== Header ===== -->
+      <div class="scan-head">
+        <h1>PSX EMA Screener <span class="thin">— live scan</span></h1>
+        <p class="scan-meta">
+          Timeframe select karo, Scan dabao — TradingView ke live data se tamam PSX listed stocks ka
+          EMA 9 / EMA 26 cross nikal aayega. BUY jab EMA 9 neechay se upar cross kare EMA 26 ko,
+          SELL jab upar se neechay cross kare.
+        </p>
+        <div class="chips">
+          <span class="chip"><span class="dot"></span> Data source: TradingView — live</span>
+          <span class="chip">Daily baseline: 23 Nov 2026</span>
+        </div>
       </div>
-      <div class="grid-2col" style="margin-top:14px;">
-        <div class="panel"><div class="panel-head"><div class="panel-title">💰 Top Value Stocks</div></div><div id="topValue"></div></div>
-        <div class="panel"><div class="panel-head"><div class="panel-title">💵 Top Dividend Stocks</div></div><div id="topDividend"></div></div>
-      </div>
-      <div class="panel" style="margin-top:14px;"><div class="panel-head"><div class="panel-title">🚀 Top Momentum Stocks</div></div><div id="topMomentum"></div></div>
-    </section>
 
-    <!-- ============= STOCKS TABLE VIEW (reused for cheetah/growth/value/dividend/momentum) ============= -->
-    <section id="view-stocks" class="hidden">
-      <div class="table-toolbar">
-        <div class="search-box">🔎<input id="searchInput" placeholder="Search symbol or company…"></div>
-        <select class="sel" id="sectorFilter"><option value="">All Sectors</option></select>
-        <button class="btn small" id="btnOpenFilters">⚙ Filters <span id="activeFilterCount"></span></button>
-        <button class="btn small" id="btnColumns">☰ Columns</button>
-        <button class="btn small ghost" id="btnResetFilters">Reset</button>
-        <div class="spacer"></div>
-        <span class="mono" id="rowCountLabel" style="color:var(--text-muted);font-size:12px;"></span>
+      <!-- ===== Live tool ===== -->
+      <div class="tool">
+        <p class="tool-label">Timeframe</p>
+        <div class="tf-group" role="group" aria-label="Timeframe select karo">
+          <button type="button" class="tf-btn active" data-tf="1D" aria-pressed="true">Daily</button>
+          <button type="button" class="tf-btn" data-tf="1W" aria-pressed="false">Weekly</button>
+          <button type="button" class="tf-btn" data-tf="4H" aria-pressed="false">4H</button>
+          <button type="button" class="tf-btn" data-tf="1H" aria-pressed="false">1H</button>
+          <button type="button" class="tf-btn" data-tf="15m" aria-pressed="false">15m</button>
+        </div>
+        <div class="tool-actions">
+          <button class="btn-main" id="scanBtn" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+            <span id="scanBtnText">Scan Karo</span>
+          </button>
+          <span class="scan-status" id="scanStatus" role="status" aria-live="polite">Page khulte hi live scan khud chal jata hai.</span>
+        </div>
+        <p class="base-info" id="baseInfo">Daily cross 23 Nov 2026 ki saved baseline se compare ho raha hai (426 stocks cover hain).</p>
       </div>
-      <div id="stocksEmptyState" class="empty-state hidden">
-        <div class="big">📭</div>
-        <h3>No data loaded yet</h3>
-        <div>Import a CSV or JSON file to start screening PSX stocks.</div>
-        <div style="margin-top:14px;"><button class="btn primary" id="btnImportEmpty">Import Data</button></div>
+
+      <div class="stats">
+        <div class="stat"><div class="num mono" id="statTotal">484</div><div class="lbl">Stocks scan hue</div></div>
+        <div class="stat"><div class="num mono" id="statEma">477</div><div class="lbl">EMA data ke saath</div></div>
+        <div class="stat buy"><div class="num mono" id="statBuy">16</div><div class="lbl">BUY cross</div></div>
+        <div class="stat sell"><div class="num mono" id="statSell">12</div><div class="lbl">SELL cross</div></div>
       </div>
-      <div class="table-wrap hidden" id="tableWrap">
-        <table class="datatable" id="mainTable">
-          <thead><tr id="tableHeadRow"></tr></thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-      <div class="pagination hidden" id="paginationBar">
-        <button class="btn small ghost" id="prevPage">‹ Prev</button>
-        <span id="pageLabel">Page 1</span>
-        <button class="btn small ghost" id="nextPage">Next ›</button>
-        <select class="sel" id="pageSizeSel">
-          <option value="25">25/page</option>
-          <option value="50" selected>50/page</option>
-          <option value="100">100/page</option>
-          <option value="250">250/page</option>
+      <p class="result-meta" id="resultMeta">Saved scan · Daily · Wed 25 Nov 2026 · market open ke doran ki values (provisional)</p>
+
+      <!-- ===== Controls ===== -->
+      <div class="controls">
+        <div class="search">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+          <input type="search" id="symSearch" placeholder="Symbol search karo — jaise HCAR, PIBTL…" aria-label="Symbol search" />
+        </div>
+        <label for="sortSel">Sort:</label>
+        <select id="sortSel">
+          <option value="volume" selected>Volume (zyada pehle)</option>
+          <option value="change">% Change</option>
+          <option value="price">Price</option>
+          <option value="symbol">Symbol (A–Z)</option>
         </select>
       </div>
-    </section>
 
-    <!-- ============= SETTINGS / METHODOLOGY ============= -->
-    <section id="view-settings" class="hidden">
-      <div class="panel">
-        <div class="panel-title" style="margin-bottom:10px;">Data Source Configuration</div>
-        <div class="section-note">
-          Direct browser calls to PSX / SCS Trade endpoints are typically blocked by CORS. Enter a proxy
-          or API base URL below if you have one running — the app will use it for "Fetch Live". Nothing
-          is fetched from an invented or hard-coded endpoint. Until configured, use CSV/JSON import.
+      <!-- ===== BUY ===== -->
+      <section class="signal" id="buySection">
+        <div class="sig-head">
+          <h2>BUY Cross</h2>
+          <span class="count-badge buy-badge mono" id="buyCount">16</span>
+          <span class="rule">EMA 9 neechay se upar cross kare EMA 26 ko</span>
         </div>
-        <label class="small-label">PSX Data API / Proxy Base URL</label>
-        <div class="inline-inputs">
-          <input class="field" id="cfgPsxUrl" style="width:340px;" placeholder="https://your-proxy.example.com/psx">
+        <div class="table-card">
+          <table aria-label="BUY cross stocks">
+            <thead><tr>
+              <th>Symbol</th><th class="num">Price (Rs)</th><th class="num">Change %</th>
+              <th class="num">Volume</th><th class="num">EMA 9</th><th class="num">EMA 26</th>
+            </tr></thead>
+            <tbody id="buyBody"></tbody>
+          </table>
+          <p class="empty-msg" id="buyEmpty">Is scan mein koi BUY cross nahi mila.</p>
         </div>
-        <label class="small-label" style="margin-top:10px;">SCS Trade API / Proxy Base URL</label>
-        <div class="inline-inputs">
-          <input class="field" id="cfgScsUrl" style="width:340px;" placeholder="https://your-proxy.example.com/scs">
+      </section>
+
+      <!-- ===== SELL ===== -->
+      <section class="signal" id="sellSection">
+        <div class="sig-head">
+          <h2>SELL Cross</h2>
+          <span class="count-badge sell-badge mono" id="sellCount">12</span>
+          <span class="rule">EMA 9 upar se neechay cross kare EMA 26 ko</span>
         </div>
-        <div style="margin-top:12px;"><button class="btn" id="btnSaveCfg">Save Configuration</button></div>
+        <div class="table-card">
+          <table aria-label="SELL cross stocks">
+            <thead><tr>
+              <th>Symbol</th><th class="num">Price (Rs)</th><th class="num">Change %</th>
+              <th class="num">Volume</th><th class="num">EMA 9</th><th class="num">EMA 26</th>
+            </tr></thead>
+            <tbody id="sellBody"></tbody>
+          </table>
+          <p class="empty-msg" id="sellEmpty">Is scan mein koi SELL cross nahi mila.</p>
+        </div>
+      </section>
+
+      <!-- ===== Download the tool / list ===== -->
+      <div class="download">
+        <h2>Ye tool file ke tor par bhi lo</h2>
+        <p>
+          Isi page ki file download kar ke phone ya computer mein save kar lo — file browser mein
+          khulti hai, aur internet ho to is file mein bhi wahi live Scan chalta hai (timeframe badal
+          kar bhi). Internet na ho to file mein 25 Nov 2026 ki saved scan nazar aati hai. File ko
+          WhatsApp par aage bhi bhej sakte ho.
+        </p>
+        <div class="dl-actions">
+          <button class="btn-main" id="dlTool" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 21h16"/></svg>
+            Screener Tool Download Karo (.html)
+          </button>
+          <button class="btn-ghost" id="dlCsv" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+            Ye List — Excel / CSV
+          </button>
+          <button class="btn-ghost" id="cpList" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            List Copy Karo (WhatsApp ke liye)
+          </button>
+        </div>
+        <div class="dl-status" id="dlStatus" role="status" aria-live="polite"></div>
+        <p class="dl-note">
+          CSV aur copy wali list hamesha upar nazar aa rahi mojooda scan ki banti hai — live scan ke
+          baad wohi nayi list export hogi. Roz ki final scan (Mon–Fri, market close ke baad)
+          WhatsApp report mein bhi aati rahegi.
+        </p>
       </div>
 
-      <div class="panel">
-        <div class="panel-title" style="margin-bottom:10px;">Cheetah Score Methodology (0–100)</div>
-        <table class="settings-table">
-          <thead><tr><th>Component</th><th>Max Points</th><th>Primary Inputs</th></tr></thead>
-          <tbody>
-            <tr><td>Revenue &amp; Earnings Growth</td><td>20</td><td>Revenue Growth YoY, Profit Growth YoY, 3Y CAGRs</td></tr>
-            <tr><td>EPS Growth</td><td>15</td><td>EPS Growth YoY, EPS CAGR 3Y</td></tr>
-            <tr><td>ROE &amp; Profitability</td><td>15</td><td>ROE, Net Margin</td></tr>
-            <tr><td>Cash Flow Quality</td><td>15</td><td>OCF/Net Profit, OCF Growth, FCF sign</td></tr>
-            <tr><td>Balance Sheet / Debt</td><td>10</td><td>Debt/Equity, Current Ratio, Interest Coverage</td></tr>
-            <tr><td>Valuation</td><td>10</td><td>P/E vs Sector P/E, PEG</td></tr>
-            <tr><td>Technical Momentum</td><td>7</td><td>Price vs DMAs, RSI band, 1Y Return</td></tr>
-            <tr><td>Dividend Quality</td><td>3</td><td>Dividend Yield, Consistency, Payout sanity</td></tr>
-            <tr><td>Business / Ownership Quality</td><td>5</td><td>Sponsor Holding, Free Float, Red Flag count</td></tr>
-          </tbody>
-        </table>
-        <div class="section-note" style="margin-top:10px;">
-          The score is computed dynamically from whatever fields are present. If a component's inputs are
-          missing for a stock, that component is excluded and the remaining points are rescaled to 100 —
-          the stock is then labelled ⚠️ INCOMPLETE DATA rather than assigned a fabricated value.
+      <!-- ===== Notes ===== -->
+      <div class="notes">
+        <div class="note">
+          <h3>Screener kaise kaam karta hai</h3>
+          <ul>
+            <li><b>BUY:</b> EMA 9 (short) neechay se upar nikal jaye EMA 26 (long) ke — pehle EMA 9 neechay tha, ab upar hai.</li>
+            <li><b>SELL:</b> EMA 9 upar se neechay cross kar jaye EMA 26 ko.</li>
+            <li>Cross pakarne ke liye live EMA values pichli saved values (baseline) se compare hoti hain — is liye sirf <b>naye cross</b> nazar aate hain, purane trend wale stocks nahi. Daily ki baseline 23 Nov 2026 ki hai; baqi timeframes mein pehli scan baseline banati hai aur cross agli scan se aata hai.</li>
+            <li>Signal tab pakka hota hai jab us timeframe ka bar close ho — Daily ka final signal 3:30 PM close ke baad.</li>
+          </ul>
+        </div>
+        <div class="note">
+          <h3>Market ki overall soorat</h3>
+          <p id="ovMain">
+            23 Nov 2026 ki baseline walay 426 stocks mein se <b>289 bullish</b> thay (EMA 9, EMA 26 ke upar) aur
+            <b>137 bearish</b> — yani market ka rujhan zyada tar upar ki taraf tha.
+          </p>
+          <p id="ovSub">
+            58 stocks (HUBC, AVN, FCL waghera) ki baseline values maujood nahi hain; un ke cross
+            Daily list mein nahi aa sakte.
+          </p>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-title" style="margin-bottom:10px;">CSV / JSON Column Aliases Recognized on Import</div>
-        <div class="code-block" id="aliasPreview"></div>
-      </div>
-    </section>
+      <footer>
+        <p>Data source: TradingView scanner (PSX listed stocks) · Live scan ke liye internet chahiye · Daily baseline: 23 Nov 2026 · Saved snapshot: 25 Nov 2026.</p>
+        <p>Ye sirf EMA cross signals hain — buy/sell recommendation nahi. Apni research aur risk ke mutabiq faisla karein.</p>
+      </footer>
+    </main>
 
-  </main>
+    <script>
+      // ---------- Saved snapshot (25 Nov 2026, Daily) — shows instantly and when offline ----------
+      var CUR = {
+        tf: "1D", live: false, baselineOnly: false,
+        total: 484, withEma: 477,
+        headline: "Saved scan · Daily · Wed 25 Nov 2026",
+        fileDate: "25-Nov-2026", prov: true,
+        buy: [
+          {s:"HCAR", p:214.24, c:1.83, v:564413, e9:206.88, e26:205.17},
+          {s:"ASL", p:15.19, c:0.53, v:364470, e9:14.71, e26:14.64},
+          {s:"SERT", p:41.50, c:3.36, v:198906, e9:37.71, e26:36.75},
+          {s:"CJPL", p:15.61, c:1.30, v:175264, e9:14.59, e26:14.30},
+          {s:"RUBY", p:25.40, c:10.00, v:98654, e9:21.27, e26:20.30},
+          {s:"KOIL", p:36.51, c:4.94, v:61950, e9:35.17, e26:35.11},
+          {s:"PREMA", p:31.75, c:-0.72, v:56204, e9:31.41, e26:31.32},
+          {s:"ASHT", p:45.98, c:10.00, v:54592, e9:39.91, e26:38.94},
+          {s:"SRVI", p:179.00, c:0.73, v:44332, e9:177.34, e26:175.81},
+          {s:"REDCO", p:31.28, c:9.99, v:41088, e9:27.74, e26:27.13},
+          {s:"PKGP", p:31.10, c:0.32, v:1451, e9:30.83, e26:30.77},
+          {s:"PPP", p:131.00, c:0.86, v:501, e9:127.78, e26:127.50},
+          {s:"CENI", p:34.50, c:0.79, v:451, e9:34.57, e26:34.27},
+          {s:"NCML", p:16.24, c:6.63, v:101, e9:15.22, e26:15.05},
+          {s:"EFUL", p:117.63, c:0.65, v:53, e9:115.69, e26:114.52},
+          {s:"SAPT", p:1575.00, c:1.59, v:3, e9:1552.96, e26:1549.10}
+        ],
+        sell: [
+          {s:"PIBTL", p:13.44, c:-0.37, v:607233, e9:13.58, e26:13.60},
+          {s:"SNGP", p:91.28, c:-0.01, v:43753, e9:92.10, e26:92.24},
+          {s:"NCPL", p:51.00, c:-0.23, v:43681, e9:51.21, e26:51.24},
+          {s:"DFSM", p:13.30, c:0.83, v:6879, e9:13.46, e26:13.51},
+          {s:"ABL", p:170.98, c:0.32, v:2897, e9:171.17, e26:171.25},
+          {s:"IBFL", p:245.53, c:-0.35, v:1400, e9:249.64, e26:250.37},
+          {s:"SARC", p:72.50, c:0.74, v:101, e9:73.71, e26:73.88},
+          {s:"JSIL", p:32.50, c:-8.01, v:1, e9:34.04, e26:34.06},
+          {s:"FSWL", p:194.99, c:-0.01, v:1, e9:205.66, e26:206.19},
+          {s:"ELCM", p:222.56, c:-2.33, v:1, e9:229.88, e26:230.79},
+          {s:"PAKD", p:116.81, c:0.00, v:1, e9:118.23, e26:118.64},
+          {s:"JSGCL", p:132.00, c:-5.60, v:1, e9:138.30, e26:139.19}
+        ]
+      };
 
-  <footer class="tiny">PSX Screener — for research purposes only. Not investment advice. Verify all data against official PSX / company filings before trading.</footer>
-</div>
+      // Daily baseline — 23 Nov 2026: sign of (EMA9 − EMA26) per symbol, 426 stocks
+      var BASELINE_1D = {"786":1,"AABS":1,"AATM":1,"ABL":1,"ABOT":1,"ACPL":1,"ADAMS":1,"ADMM":1,"AGHA":-1,"AGIC":1,"AGIL":1,"AGL":-1,"AGP":-1,"AGSML":1,"AGTL":1,"AHL":-1,"AHTM":-1,"AICL":-1,"AIRLINK":-1,"AKBL":1,"AKDHL":1,"AKDSL":-1,"AKGL":1,"ALAC":-1,"ALIFE":-1,"ALNRS":1,"AMBL":1,"AMTEX":1,"ANL":1,"ANSM":1,"ANTM":-1,"APL":1,"ARCTM":1,"ARPAK":-1,"ARPL":1,"ARUJ":1,"ASC":-1,"ASHT":-1,"ASIC":-1,"ASL":-1,"ASTL":1,"ASTM":-1,"ATBA":1,"ATIL":1,"ATLH":-1,"ATRL":-1,"BAFL":1,"BAFS":1,"BAHL":1,"BAPL":-1,"BATA":-1,"BCL":1,"BECO":1,"BELA":-1,"BERG":-1,"BFMOD":1,"BGL":1,"BHAT":1,"BIFO":1,"BIPL":1,"BNWM":1,"BOK":-1,"BOP":1,"BPL":1,"BTL":-1,"BUXL":-1,"BWCL":1,"BWHL":1,"CCM":1,"CENI":-1,"CEPB":-1,"CFL":1,"CHAS":1,"CHBL":-1,"CHCC":1,"CJPL":-1,"CLOV":1,"CLVL":-1,"CNERGY":-1,"COLG":1,"CPHL":-1,"CPPL":-1,"CRTM":1,"CSAP":-1,"CSIL":1,"CTM":-1,"DAAG":1,"DADX":1,"DBCI":1,"DCL":1,"DEL":1,"DFML":1,"DFSM":1,"DGKC":1,"DIIL":1,"DINT":1,"DLL":1,"DNCC":1,"DOL":1,"DSIL":1,"DSL":1,"DWAE":1,"DWSM":1,"DWTM":1,"DYNO":-1,"ECOP":-1,"EFERT":1,"EFUG":1,"EFUL":-1,"ELCM":1,"ELSM":1,"EMCO":1,"EPCL":1,"EPQL":1,"ESBL":-1,"EWIC":-1,"EXIDE":1,"FABL":1,"FANM":1,"FASM":1,"FATIMA":1,"FCCL":1,"FCEL":1,"FCEPL":1,"FCIBL":1,"FCSC":1,"FDPL":1,"FECM":1,"FECTC":-1,"FEM":1,"FEROZ":1,"FFC":1,"FFL":1,"FFLM":1,"FHAM":1,"FIBLM":1,"FIL":-1,"FIMM":-1,"FLYNG":1,"FML":-1,"FNEL":1,"FPJM":-1,"FPRM":1,"FRCL":1,"FRSM":1,"FSWL":1,"FTMM":1,"FTSM":-1,"FZCM":1,"GADT":1,"GAMON":1,"GATI":1,"GATM":1,"GCIL":1,"GEMPAPL":1,"GFIL":1,"GGGL":1,"GGL":1,"GHGL":1,"GHNI":1,"GLAXO":1,"GOC":1,"GRR":-1,"GRYL":1,"GSPM":1,"GTYR":-1,"GUSM":1,"GVGL":-1,"GWLC":-1,"HABSM":1,"HAEL":1,"HAFL":-1,"HALEON":1,"HASCOL":-1,"HBL":1,"HCAR":-1,"HICL":1,"HINO":1,"HINOON":1,"HIRAT":-1,"HMB":1,"HPL":1,"HRPL":1,"HTL":1,"HUMNL":-1,"HUSI":-1,"HWQS":1,"IBFL":1,"IBLHL":1,"ICCI":1,"ICIBL":1,"ICL":1,"IDRT":1,"IDYM":1,"IGIHL":1,"IGIL":1,"ILP":1,"IMAGE":-1,"IML":-1,"INDU":1,"INIL":1,"INKL":1,"ISIL":-1,"ISL":1,"ITTEFAQ":1,"JATM":1,"JDMT":1,"JDWS":1,"JGICL":1,"JKSM":-1,"JLICL":1,"JSBL":-1,"JSCL":-1,"JSGCL":1,"JSIL":1,"JSML":1,"JUBS":1,"JVDC":-1,"KAPCO":1,"KCL":1,"KEL":1,"KHTC":1,"KHYT":1,"KML":1,"KOHC":1,"KOHE":-1,"KOHP":1,"KOHTM":-1,"KOIL":-1,"KOSM":1,"KPUS":-1,"KSBP":1,"KSTM":1,"KTML":1,"LCI":-1,"LEUL":1,"LOADS":1,"LOTCHEM":1,"LPGL":1,"LPL":-1,"LSECL":1,"LSEFSL":1,"LUCK":1,"MACFL":-1,"MACTER":-1,"MARI":1,"MCB":1,"MCBIM":-1,"MDTL":1,"MEBL":1,"MEHT":1,"MERIT":-1,"MFFL":-1,"MFL":1,"MIRKS":1,"MLCF":1,"MQTM":1,"MRNS":1,"MSCL":1,"MSOT":-1,"MTL":1,"MUGHAL":-1,"MUREB":-1,"MWMP":-1,"NAGC":1,"NATF":1,"NATM":1,"NBP":1,"NCL":1,"NCML":-1,"NCPL":1,"NESTLE":-1,"NETSOL":-1,"NEXT":1,"NICL":1,"NML":1,"NONS":1,"NPL":-1,"NRL":-1,"NRSL":1,"NSRM":1,"OBOY":-1,"OCTOPUS":-1,"OGDC":1,"OLPL":-1,"OLPM":1,"OML":1,"ORM":1,"OTSU":1,"PABC":1,"PACE":-1,"PAEL":1,"PAKD":1,"PAKL":1,"PAKOXY":1,"PAKRI":1,"PAKT":1,"PASL":1,"PASM":-1,"PCAL":-1,"PECO":1,"PGLC":1,"PIAHCLA":1,"PIAHCLB":-1,"PIBTL":1,"PICT":-1,"PIL":1,"PIM":1,"PINL":-1,"PIOC":1,"PKGI":-1,"PKGP":-1,"PKGS":-1,"PMRS":1,"PNSC":1,"POL":-1,"POML":1,"POWER":1,"PPL":1,"PPP":-1,"PPVC":1,"PREMA":-1,"PRET":1,"PRL":-1,"PRWM":1,"PSEL":1,"PSO":1,"PSX":1,"PSYL":1,"PTC":-1,"PTL":1,"QUET":1,"QUICE":-1,"REDCO":-1,"REWM":1,"RICL":1,"RMPL":-1,"RPL":1,"RUBY":-1,"RUPL":-1,"SAIF":1,"SANSM":1,"SAPT":-1,"SARC":1,"SASML":-1,"SAZEW":-1,"SBL":-1,"SCBPL":1,"SEARL":1,"SEL":-1,"SEPL":1,"SERT":-1,"SFL":-1,"SGF":1,"SHCM":1,"SHDT":-1,"SHEZ":-1,"SHFA":1,"SHJS":-1,"SHNI":1,"SHSML":1,"SIBL":1,"SIEM":-1,"SINDM":1,"SITC":-1,"SKRS":1,"SLYT":1,"SMCPL":1,"SML":-1,"SNAI":-1,"SNBL":1,"SNGP":1,"SPEL":1,"SPL":-1,"SPWL":-1,"SRVI":-1,"SSGC":1,"SSML":1,"SSOM":1,"STCL":1,"STJT":-1,"STML":1,"STPL":-1,"STYLERS":1,"SUHJ":1,"SURC":-1,"SUTM":1,"SYM":-1,"SYS":-1,"SZTM":1,"TATM":-1,"TCORP":1,"TELE":1,"TGL":1,"THALL":1,"THCCL":1,"TICL":1,"TOMCL":-1,"TOWL":1,"TPL":1,"TPLP":1,"TPLT":1,"TREET":1,"TRG":-1,"TRIPF":-1,"TRSM":1,"TSBL":1,"TSML":-1,"TSPL":1,"UBDL":1,"UBL":1,"UCAPM":1,"UDLI":1,"UDPL":-1,"UNIC":1,"UNITY":1,"UPFL":1,"UVIC":-1,"WAHN":1,"WAVES":1,"WAVESAPP":-1,"WTL":1,"YOUW":1,"ZAHID":1,"ZIL":-1,"ZTL":1};
 
-<!-- ============= FILTER SLIDEOVER ============= -->
-<div id="filterOverlay" class="overlay hidden"></div>
-<div id="filterPanel" class="slideover hidden">
-  <div class="so-head">
-    <b>Filter Builder</b>
-    <button class="icon-btn" id="closeFilters">✕</button>
-  </div>
-  <div class="so-body">
-    <div class="filter-group">
-      <h4>Saved Screens</h4>
-      <div class="preset-btns" id="presetBtns"></div>
-      <div class="inline-inputs">
-        <input class="field" id="saveScreenName" placeholder="Name this screen…" style="flex:1;">
-        <button class="btn small" id="btnSaveScreen">Save</button>
-      </div>
-    </div>
-    <div class="filter-group">
-      <h4>Fundamental Ranges</h4>
-      <div id="rangeFilters"></div>
-    </div>
-    <div class="filter-group">
-      <h4>Technical Conditions</h4>
-      <div id="toggleFilters"></div>
-    </div>
-  </div>
-  <div class="so-foot">
-    <button class="btn ghost" id="btnClearFilters">Clear All</button>
-    <button class="btn primary" id="btnApplyFilters" style="flex:1;">Apply Filters</button>
-  </div>
-</div>
+      var TF_SUFFIX = { "1D": "", "1W": "|1W", "4H": "|240", "1H": "|60", "15m": "|15" };
+      var TF_LABEL = { "1D": "Daily", "1W": "Weekly", "4H": "4H", "1H": "1H", "15m": "15m" };
+      var curTF = "1D";
+      var sessionBase = {}; // timeframe -> {SYM: sign} for non-Daily timeframes (this session only)
+      var scanning = false;
 
-<!-- ============= COLUMN VISIBILITY POPOVER (reuses slideover) ============= -->
-<div id="colOverlay" class="overlay hidden"></div>
-<div id="colPanel" class="slideover hidden" style="width:280px;">
-  <div class="so-head"><b>Columns</b><button class="icon-btn" id="closeCols">✕</button></div>
-  <div class="so-body" id="colList"></div>
-</div>
+      // ---------- Formatting ----------
+      function fmtNum(n) { return (n || 0).toLocaleString("en-US"); }
+      function fmtPrice(n) { return (n || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+      function fmtChg(c) { c = c || 0; return (c > 0 ? "+" : "") + c.toFixed(2) + "%"; }
+      function chgClass(c) { return c > 0 ? "chg-up" : (c < 0 ? "chg-dn" : "chg-flat"); }
+      function sgn(x) { return x > 0 ? 1 : (x < 0 ? -1 : 0); }
+      function numOr(v, d) { return (typeof v === "number" && isFinite(v)) ? v : d; }
 
-<!-- ============= IMPORT MODAL ============= -->
-<div id="importModal" class="modal-backdrop hidden">
-  <div class="modal">
-    <div class="m-head"><b>Import Data</b><button class="icon-btn" id="closeImport">✕</button></div>
-    <div class="m-body">
-      <div class="dropzone" id="dropzone">
-        <div style="font-size:26px;">📄</div>
-        <div>Drop a <b>.csv</b> or <b>.json</b> file here, or click to browse</div>
-        <div style="font-size:11px;margin-top:6px;">Column names are auto-mapped to the screener's fields.</div>
-        <input type="file" id="fileInput" accept=".csv,.json" class="hidden">
-      </div>
-      <div id="mappingPreview" class="hidden">
-        <div style="margin-top:12px;font-size:12.5px;color:var(--text-muted);">Detected column mapping:</div>
-        <table class="map-table" id="mapTable"></table>
-        <div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);" id="importSummary"></div>
-      </div>
-    </div>
-    <div class="m-foot">
-      <button class="btn ghost" id="cancelImport">Cancel</button>
-      <button class="btn primary hidden" id="confirmImport">Import <span id="confirmCount"></span> Stocks</button>
-    </div>
-  </div>
-</div>
+      // ---------- Tables ----------
+      function rowHtml(x) {
+        return "<tr>" +
+          '<td class="sym" data-label="Symbol">' + x.s + "</td>" +
+          '<td class="num" data-label="Price (Rs)">' + fmtPrice(x.p) + "</td>" +
+          '<td class="num ' + chgClass(x.c) + '" data-label="Change %">' + fmtChg(x.c) + "</td>" +
+          '<td class="num" data-label="Volume">' + fmtNum(x.v) + "</td>" +
+          '<td class="num" data-label="EMA 9">' + fmtPrice(x.e9) + "</td>" +
+          '<td class="num" data-label="EMA 26">' + fmtPrice(x.e26) + "</td>" +
+          "</tr>";
+      }
+      function sorted(list, key) {
+        var arr = list.slice();
+        if (key === "volume") arr.sort(function (a, b) { return b.v - a.v; });
+        else if (key === "change") arr.sort(function (a, b) { return b.c - a.c; });
+        else if (key === "price") arr.sort(function (a, b) { return b.p - a.p; });
+        else if (key === "symbol") arr.sort(function (a, b) { return a.s < b.s ? -1 : 1; });
+        return arr;
+      }
+      function render() {
+        var q = document.getElementById("symSearch").value.trim().toUpperCase();
+        var key = document.getElementById("sortSel").value;
+        [["buy", "buyBody", "buyEmpty", "buyCount", "BUY"], ["sell", "sellBody", "sellEmpty", "sellCount", "SELL"]].forEach(function (cfg) {
+          var list = sorted(CUR[cfg[0]], key).filter(function (x) { return !q || x.s.indexOf(q) !== -1; });
+          document.getElementById(cfg[1]).innerHTML = list.map(rowHtml).join("");
+          var emptyEl = document.getElementById(cfg[2]);
+          emptyEl.style.display = list.length ? "none" : "block";
+          if (!list.length) {
+            emptyEl.textContent = CUR.baselineOnly
+              ? "Baseline abhi set hua hai — is timeframe ke cross agli scan se aayenge."
+              : (q ? "Is search mein koi " + cfg[4] + " stock nahi mila."
+                   : "Is scan mein koi " + cfg[4] + " cross nahi mila.");
+          }
+          document.getElementById(cfg[3]).textContent = list.length;
+        });
+        document.getElementById("statTotal").textContent = fmtNum(CUR.total);
+        document.getElementById("statEma").textContent = fmtNum(CUR.withEma);
+        document.getElementById("statBuy").textContent = CUR.buy.length;
+        document.getElementById("statSell").textContent = CUR.sell.length;
+        document.getElementById("resultMeta").textContent = CUR.headline + (CUR.prov ? " · Provisional — market open hai, final list close (3:30 PM) ke baad pakki hoti hai" : "");
+      }
+      document.getElementById("symSearch").addEventListener("input", render);
+      document.getElementById("sortSel").addEventListener("change", render);
 
-<!-- ============= STOCK DETAIL MODAL ============= -->
-<div id="detailModal" class="modal-backdrop hidden">
-  <div class="modal detail-modal">
-    <div class="m-head">
-      <div><b id="detailSymbol"></b> <span id="detailCompany" style="color:var(--text-muted);font-weight:400;"></span></div>
-      <button class="icon-btn" id="closeDetail">✕</button>
-    </div>
-    <div class="m-body" id="detailBody"></div>
-  </div>
-</div>
+      // ---------- PKT time helpers ----------
+      function pktParts() {
+        var parts = {};
+        try {
+          var fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", weekday: "short", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+          fmt.formatToParts(new Date()).forEach(function (p) { parts[p.type] = p.value; });
+        } catch (e) {
+          var d = new Date();
+          parts = { weekday: "", day: String(d.getDate()), month: "", year: String(d.getFullYear()), hour: String(d.getHours()), minute: String(d.getMinutes()) };
+        }
+        return parts;
+      }
+      function timeLabel(p) {
+        var h = parseInt(p.hour, 10) || 0; if (h === 24) h = 0;
+        var hh = ((h + 11) % 12) + 1;
+        var ap = h < 12 ? "AM" : "PM";
+        var mm = ("0" + (parseInt(p.minute, 10) || 0)).slice(-2);
+        return p.weekday + " " + p.day + " " + p.month + " " + p.year + ", " + hh + ":" + mm + " " + ap + " PKT";
+      }
+      function isProvisional(p) {
+        var wd = p.weekday;
+        if (wd === "Sat" || wd === "Sun") return false;
+        var h = parseInt(p.hour, 10) || 0; if (h === 24) h = 0;
+        var mins = h * 60 + (parseInt(p.minute, 10) || 0);
+        return mins < 15 * 60 + 30; // PSX close 3:30 PM PKT
+      }
 
-<script>
-/* ============================================================
-   1. DATA CONFIG
-   Placeholders only — no invented endpoints. The user supplies
-   real PSX / SCS Trade API or proxy URLs on the Settings screen
-   (values persisted only in memory for this session).
-   ============================================================ */
-const DataConfig = {
-  psxBaseUrl: "",
-  scsBaseUrl: "",
-  isLiveConfigured(){ return !!(this.psxBaseUrl || this.scsBaseUrl); }
-};
+      // ---------- Live scan ----------
+      var statusEl = document.getElementById("scanStatus");
+      function setStatus(msg, cls) {
+        statusEl.textContent = msg;
+        statusEl.className = "scan-status" + (cls ? " " + cls : "");
+      }
+      function updateBaseInfo() {
+        var el = document.getElementById("baseInfo");
+        if (curTF === "1D") {
+          el.textContent = "Daily cross 23 Nov 2026 ki saved baseline se compare ho raha hai (426 stocks cover hain).";
+        } else if (sessionBase[curTF]) {
+          el.textContent = TF_LABEL[curTF] + " ka baseline is session ki pichli scan se set hai — har nayi scan ke baad baseline update ho jata hai, taake cross hamesha pichli scan se compare hon.";
+        } else {
+          el.textContent = TF_LABEL[curTF] + " ki pehli scan is timeframe ka baseline banayegi — cross agli scan se nazar aayenge.";
+        }
+      }
 
-/* ============================================================
-   2. DATA FETCHING LAYER
-   Thin wrapper so real endpoints can be dropped in later without
-   touching the screening/scoring/UI code below.
-   ============================================================ */
-const DataFetching = {
-  async fetchLivePsx(){
-    if(!DataConfig.psxBaseUrl) throw new Error("No PSX API/proxy URL configured.");
-    const res = await fetch(DataConfig.psxBaseUrl);
-    if(!res.ok) throw new Error("PSX endpoint returned HTTP " + res.status);
-    return res.json();
-  },
-  async fetchLiveScs(){
-    if(!DataConfig.scsBaseUrl) throw new Error("No SCS Trade API/proxy URL configured.");
-    const res = await fetch(DataConfig.scsBaseUrl);
-    if(!res.ok) throw new Error("SCS endpoint returned HTTP " + res.status);
-    return res.json();
-  }
-};
+      function runScan() {
+        if (scanning) return;
+        scanning = true;
+        var btn = document.getElementById("scanBtn");
+        btn.disabled = true; btn.classList.add("busy");
+        document.getElementById("scanBtnText").textContent = "Scan ho rahi hai…";
+        setStatus("TradingView se live data aa raha hai — tamam PSX stocks scan ho rahe hain…", "");
+        var suf = TF_SUFFIX[curTF];
+        var body = JSON.stringify({
+          symbols: { query: { types: ["stock"] }, tickers: [] },
+          columns: ["name", "close", "change", "volume", "EMA9" + suf, "EMA26" + suf],
+          range: [0, 600],
+          markets: ["pakistan"]
+        });
+        var ctrl = ("AbortController" in window) ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 20000) : null;
+        fetch("https://scanner.tradingview.com/global/scan", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: body,
+          signal: ctrl ? ctrl.signal : undefined
+        }).then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        }).then(function (data) {
+          if (timer) clearTimeout(timer);
+          onScanData(data);
+        }).catch(function () {
+          if (timer) clearTimeout(timer);
+          setStatus("Live scan nahi ho saki — internet connection check kar ke dobara Scan dabao. Neeche aakhri nazar aayi scan mojood hai.", "err");
+        }).then(function () {
+          scanning = false;
+          btn.disabled = false; btn.classList.remove("busy");
+          document.getElementById("scanBtnText").textContent = "Scan Karo";
+        });
+      }
 
-/* ============================================================
-   3. DATA NORMALIZATION
-   Canonical stock schema + CSV/JSON parsing + column-alias mapping.
-   Missing values are always kept as null (rendered as N/A) — never
-   guessed or randomized.
-   ============================================================ */
-const CANONICAL_FIELDS = [
-  "symbol","company","sector",
-  "price","change1d","change1w","change1m","change3m","change6m","change1y",
-  "week52High","week52Low","dma20","dma50","dma100","dma200","rsi","macd","volume","avgVolume",
-  "pe","forwardPe","pb","peg","evEbitda","divYield",
-  "roe","roa","grossMargin","opMargin","netMargin",
-  "revGrowthYoY","revCagr3y","revCagr5y","profitGrowthYoY","profitCagr3y","profitCagr5y",
-  "eps","epsGrowthYoY","epsCagr3y","epsCagr5y",
-  "debtEquity","totalDebt","netDebt","interestCoverage","currentRatio","quickRatio","cash",
-  "ocf","fcf","ocfGrowth","fcfGrowth","ocfToNetProfit",
-  "payoutRatio","divGrowth","divConsistency",
-  "sponsorHolding","institutionalHolding","freeFloat","insiderHolding",
-  "sectorAvgPe","historicalPe",
-  // optional inputs used only for red-flag detection when supplied
-  "receivablesGrowth","equityGrowth","debtGrowth","marginTrend","sharesOutstandingGrowth",
-  "auditorNote","nonRecurringIncomeFlag"
-];
+      function onScanData(data) {
+        var rows = data.data || [];
+        var snap = {}, withEma = 0, bull = 0, bear = 0;
+        rows.forEach(function (row) {
+          var sym = (row.s || "").split(":")[1];
+          if (!sym) return;
+          var d = row.d || [];
+          var rec = { s: sym, p: numOr(d[1], 0), c: numOr(d[2], 0), v: numOr(d[3], 0), e9: d[4], e26: d[5] };
+          snap[sym] = rec;
+          if (typeof d[4] === "number" && typeof d[5] === "number") {
+            withEma++;
+            if (d[4] > d[5]) bull++; else if (d[4] < d[5]) bear++;
+          }
+        });
+        var total = data.totalCount || rows.length;
+        var p = pktParts();
+        var prov = isProvisional(p);
+        var tLabel = timeLabel(p);
+        var base = (curTF === "1D") ? BASELINE_1D : sessionBase[curTF];
+        var buy = [], sell = [], baselineOnly = false;
 
-const ALIAS_MAP = {
-  symbol:["symbol","ticker","code","psx symbol","scrip"],
-  company:["company","company name","name","companyname"],
-  sector:["sector","industry"],
-  price:["price","current price","last price","close","ltp"],
-  change1d:["1d change","change1d","daychange","1 day change","change%","change percent"],
-  change1w:["1w change","change1w","1 week change"],
-  change1m:["1m change","change1m","1 month change"],
-  change3m:["3m change","change3m","3 month change"],
-  change6m:["6m change","change6m","6 month change"],
-  change1y:["1y change","change1y","1 year change","1y return"],
-  week52High:["52 week high","52w high","week52high","high52w"],
-  week52Low:["52 week low","52w low","week52low","low52w"],
-  dma20:["20 dma","dma20","20day ma","sma20"],
-  dma50:["50 dma","dma50","50day ma","sma50"],
-  dma100:["100 dma","dma100","100day ma","sma100"],
-  dma200:["200 dma","dma200","200day ma","sma200"],
-  rsi:["rsi","rsi14"],
-  macd:["macd"],
-  volume:["volume","vol"],
-  avgVolume:["average volume","avg volume","avgvolume"],
-  pe:["pe","p/e","pe ratio","price to earnings"],
-  forwardPe:["forward pe","forward p/e"],
-  pb:["pb","p/b","pb ratio","price to book"],
-  peg:["peg","peg ratio"],
-  evEbitda:["ev/ebitda","evebitda"],
-  divYield:["dividend yield","div yield","yield"],
-  roe:["roe","return on equity"],
-  roa:["roa","return on assets"],
-  grossMargin:["gross margin"],
-  opMargin:["operating margin","op margin"],
-  netMargin:["net profit margin","net margin"],
-  revGrowthYoY:["revenue growth yoy","revenue growth","rev growth yoy","sales growth"],
-  revCagr3y:["revenue cagr 3y","rev cagr 3y"],
-  revCagr5y:["revenue cagr 5y","rev cagr 5y"],
-  profitGrowthYoY:["profit growth yoy","profit growth","net income growth"],
-  profitCagr3y:["profit cagr 3y"],
-  profitCagr5y:["profit cagr 5y"],
-  eps:["eps","earnings per share"],
-  epsGrowthYoY:["eps growth yoy","eps growth"],
-  epsCagr3y:["eps cagr 3y"],
-  epsCagr5y:["eps cagr 5y"],
-  debtEquity:["debt/equity","debt equity","de ratio","d/e"],
-  totalDebt:["total debt"],
-  netDebt:["net debt"],
-  interestCoverage:["interest coverage"],
-  currentRatio:["current ratio"],
-  quickRatio:["quick ratio"],
-  cash:["cash","cash and equivalents"],
-  ocf:["operating cash flow","ocf"],
-  fcf:["free cash flow","fcf"],
-  ocfGrowth:["ocf growth"],
-  fcfGrowth:["fcf growth"],
-  ocfToNetProfit:["ocf/net profit","ocf to net profit"],
-  payoutRatio:["payout ratio"],
-  divGrowth:["dividend growth","div growth"],
-  divConsistency:["dividend consistency","div consistency"],
-  sponsorHolding:["sponsor holding","promoter holding","sponsor/promoter holding"],
-  institutionalHolding:["institutional holding"],
-  freeFloat:["free float"],
-  insiderHolding:["insider holding","director holding"],
-  sectorAvgPe:["sector avg pe","sector pe"],
-  historicalPe:["historical pe","own historical pe"],
-  receivablesGrowth:["receivables growth"],
-  equityGrowth:["equity growth"],
-  debtGrowth:["debt growth"],
-  marginTrend:["margin trend"],
-  sharesOutstandingGrowth:["shares outstanding growth","dilution"],
-  auditorNote:["auditor note","auditor qualification"],
-  nonRecurringIncomeFlag:["one off income","non recurring income","nonrecurringincomeflag"]
-};
+        function currentSigns() {
+          var m = {};
+          Object.keys(snap).forEach(function (sym) {
+            var r = snap[sym];
+            if (typeof r.e9 === "number" && typeof r.e26 === "number") m[sym] = sgn(r.e9 - r.e26);
+          });
+          return m;
+        }
 
-function normalizeHeader(h){ return String(h).toLowerCase().trim().replace(/_/g," ").replace(/\s+/g," "); }
+        if (!base) {
+          baselineOnly = true;
+          sessionBase[curTF] = currentSigns();
+        } else {
+          Object.keys(snap).forEach(function (sym) {
+            var r = snap[sym];
+            if (typeof r.e9 !== "number" || typeof r.e26 !== "number") return;
+            var prev = base[sym];
+            if (prev === undefined || prev === 0) return;
+            var today = sgn(r.e9 - r.e26);
+            if (prev < 0 && today > 0) buy.push(r);
+            else if (prev > 0 && today < 0) sell.push(r);
+          });
+          if (curTF !== "1D") sessionBase[curTF] = currentSigns();
+        }
 
-function buildHeaderMapping(headers){
-  const map = {}; // canonical -> original header
-  const normHeaders = headers.map(h=>({raw:h, norm:normalizeHeader(h)}));
-  Object.keys(ALIAS_MAP).forEach(canon=>{
-    const aliases = ALIAS_MAP[canon];
-    const found = normHeaders.find(nh=> aliases.includes(nh.norm));
-    if(found) map[canon] = found.raw;
-  });
-  return map;
-}
-
-function toNumberOrNull(v){
-  if(v===undefined||v===null||v==="") return null;
-  if(typeof v==="boolean") return v;
-  const cleaned = String(v).replace(/[%,\s]/g,"");
-  if(cleaned===""||cleaned==="N/A"||cleaned==="NA"||cleaned==="-") return null;
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? null : n;
-}
-
-// Simple RFC4180-ish CSV parser (handles quoted fields, commas, escaped quotes, CRLF)
-function parseCSV(text){
-  const rows=[]; let row=[]; let field=""; let inQuotes=false;
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    if(inQuotes){
-      if(c === '"'){
-        if(text[i+1] === '"'){ field+='"'; i++; } else { inQuotes=false; }
-      } else field+=c;
-    } else {
-      if(c === '"') inQuotes=true;
-      else if(c===','){ row.push(field); field=""; }
-      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
-      else if(c==='\r'){ /* skip */ }
-      else field+=c;
-    }
-  }
-  if(field.length || row.length){ row.push(field); rows.push(row); }
-  return rows.filter(r=> r.length>1 || (r.length===1 && r[0]!==""));
-}
-
-function normalizeCsvRows(rows){
-  if(!rows.length) return {stocks:[], mapping:{}};
-  const headers = rows[0];
-  const mapping = buildHeaderMapping(headers);
-  const stocks = [];
-  for(let i=1;i<rows.length;i++){
-    const raw = rows[i]; if(!raw.length) continue;
-    const obj = {}; headers.forEach((h,idx)=> obj[h]=raw[idx]);
-    stocks.push(normalizeStockRecord(obj, mapping));
-  }
-  return {stocks, mapping};
-}
-
-function normalizeStockRecord(raw, mapping){
-  const s = {};
-  CANONICAL_FIELDS.forEach(f=>{
-    const origHeader = mapping[f];
-    let val = origHeader!==undefined ? raw[origHeader] : (raw[f]!==undefined?raw[f]:undefined);
-    if(f==="symbol"||f==="company"||f==="sector"||f==="auditorNote"){
-      s[f] = (val===undefined||val===null||val==="") ? null : String(val).trim();
-    } else if(f==="nonRecurringIncomeFlag"){
-      s[f] = (val===undefined||val===null||val==="") ? null : (val===true||/^(true|yes|1)$/i.test(String(val)));
-    } else {
-      s[f] = toNumberOrNull(val);
-    }
-  });
-  if(raw.history) s.history = raw.history; // JSON import may carry rich history
-  s._id = (s.symbol||("row"+Math.random().toString(36).slice(2)));
-  return s;
-}
-
-function normalizeJson(json){
-  const arr = Array.isArray(json) ? json : (Array.isArray(json.stocks) ? json.stocks : []);
-  const mapping = arr.length ? buildHeaderMapping(Object.keys(arr[0])) : {};
-  const stocks = arr.map(r=> normalizeStockRecord(r, mapping));
-  return {stocks, mapping};
-}
-
-/* ============================================================
-   4. SCREENING ENGINE
-   Pure functions over the normalized stock array — filters,
-   search, sort. No UI concerns in this section.
-   ============================================================ */
-const Screening = {
-  search(stocks, q){
-    if(!q) return stocks;
-    q = q.toLowerCase();
-    return stocks.filter(s => (s.symbol||"").toLowerCase().includes(q) || (s.company||"").toLowerCase().includes(q));
-  },
-  bySector(stocks, sector){
-    if(!sector) return stocks;
-    return stocks.filter(s => s.sector === sector);
-  },
-  byRanges(stocks, ranges){
-    // ranges: { field: {min, max} }
-    return stocks.filter(s => Object.keys(ranges).every(f=>{
-      const r = ranges[f]; const v = s[f];
-      if(r.min===null && r.max===null) return true;
-      if(v===null||v===undefined) return false; // require data to satisfy an active numeric filter
-      if(r.min!==null && v < r.min) return false;
-      if(r.max!==null && v > r.max) return false;
-      return true;
-    }));
-  },
-  byToggles(stocks, toggles){
-    const active = Object.keys(toggles).filter(k=>toggles[k]);
-    if(!active.length) return stocks;
-    return stocks.filter(s=> active.every(key => TECH_CONDITIONS[key](s)));
-  },
-  sort(stocks, field, dir){
-    const mult = dir==="asc" ? 1 : -1;
-    return [...stocks].sort((a,b)=>{
-      let av = field==="cheetahScore" ? (a._score ? a._score.total : null) : a[field];
-      let bv = field==="cheetahScore" ? (b._score ? b._score.total : null) : b[field];
-      if(av===null||av===undefined) return 1;
-      if(bv===null||bv===undefined) return -1;
-      if(typeof av === "string") return av.localeCompare(bv) * mult;
-      return (av-bv) * mult;
-    });
-  }
-};
-
-const TECH_CONDITIONS = {
-  aboveDma20: s=> s.price!==null && s.dma20!==null && s.price > s.dma20,
-  aboveDma50: s=> s.price!==null && s.dma50!==null && s.price > s.dma50,
-  aboveDma200: s=> s.price!==null && s.dma200!==null && s.price > s.dma200,
-  goldenCross: s=> s.dma50!==null && s.dma200!==null && s.dma50 > s.dma200,
-  breakout: s=> s.price!==null && s.week52High!==null && s.price >= s.week52High*0.98,
-  volumeBreakout: s=> s.volume!==null && s.avgVolume!==null && s.volume > s.avgVolume*1.5 &&
-                       s.price!==null && s.dma50!==null && s.price > s.dma50
-};
-
-/* ============================================================
-   5. SCORING ENGINE
-   Cheetah Score (0-100), red-flag detection, sector stats.
-   All weights are transparent and documented in Settings view.
-   ============================================================ */
-function clampScore(v,max){ return Math.max(0, Math.min(max, v)); }
-
-// Piecewise mapper: value -> points, given a set of (threshold, points) breakpoints (descending thresholds)
-function mapBreakpoints(value, points_for){
-  for(const [thresh, pts] of points_for){ if(value >= thresh) return pts; }
-  return 0;
-}
-
-function computeSubscores(s, sectorStats){
-  const parts = {}; // name -> {points, max, available}
-
-  // Revenue & Earnings Growth (20)
-  {
-    const vals=[s.revGrowthYoY, s.profitGrowthYoY, s.revCagr3y, s.profitCagr3y].filter(v=>v!==null);
-    if(vals.length){
-      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
-      const pts = clampScore(mapBreakpoints(avg,[[30,20],[20,16],[12,12],[6,7],[0,3]]),20);
-      parts.growth = {points:pts, max:20, available:true};
-    } else parts.growth = {points:0,max:20,available:false};
-  }
-  // EPS Growth (15)
-  {
-    const vals=[s.epsGrowthYoY, s.epsCagr3y].filter(v=>v!==null);
-    if(vals.length){
-      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
-      parts.eps = {points: clampScore(mapBreakpoints(avg,[[30,15],[20,12],[12,9],[6,5],[0,2]]),15), max:15, available:true};
-    } else parts.eps = {points:0,max:15,available:false};
-  }
-  // ROE & Profitability (15)
-  {
-    const have = s.roe!==null || s.netMargin!==null;
-    if(have){
-      let pts=0, weight=0;
-      if(s.roe!==null){ pts += mapBreakpoints(s.roe,[[25,10],[18,8],[12,5],[6,2],[0,0]]); weight+=10; }
-      if(s.netMargin!==null){ pts += mapBreakpoints(s.netMargin,[[20,5],[12,4],[6,2],[0,1]]); weight+=5; }
-      parts.roe = {points: clampScore(pts * (15/Math.max(weight,1)),15), max:15, available:true};
-    } else parts.roe = {points:0,max:15,available:false};
-  }
-  // Cash Flow Quality (15)
-  {
-    const have = s.ocfToNetProfit!==null || s.fcf!==null || s.ocfGrowth!==null;
-    if(have){
-      let pts=0, weight=0;
-      if(s.ocfToNetProfit!==null){ pts += mapBreakpoints(s.ocfToNetProfit,[[1.2,7],[0.9,5],[0.6,3],[0,1]]); weight+=7; }
-      if(s.fcf!==null){ pts += (s.fcf>0?5:0); weight+=5; }
-      if(s.ocfGrowth!==null){ pts += mapBreakpoints(s.ocfGrowth,[[15,3],[5,2],[0,1]]); weight+=3; }
-      parts.cash = {points: clampScore(pts*(15/Math.max(weight,1)),15), max:15, available:true};
-    } else parts.cash = {points:0,max:15,available:false};
-  }
-  // Balance Sheet / Debt (10)
-  {
-    const have = s.debtEquity!==null || s.currentRatio!==null || s.interestCoverage!==null;
-    if(have){
-      let pts=0, weight=0;
-      if(s.debtEquity!==null){ pts += mapBreakpoints(5-s.debtEquity,[[4.5,5],[3.5,4],[2,2],[0,1]]); weight+=5; }
-      if(s.currentRatio!==null){ pts += mapBreakpoints(s.currentRatio,[[1.5,3],[1,2],[0.7,1]]); weight+=3; }
-      if(s.interestCoverage!==null){ pts += mapBreakpoints(s.interestCoverage,[[6,2],[3,1]]); weight+=2; }
-      parts.debt = {points: clampScore(pts*(10/Math.max(weight,1)),10), max:10, available:true};
-    } else parts.debt = {points:0,max:10,available:false};
-  }
-  // Valuation (10)
-  {
-    const secPe = s.sectorAvgPe!==null ? s.sectorAvgPe : (sectorStats && sectorStats.avgPe);
-    if(s.pe!==null && secPe){
-      const rel = s.pe / secPe;
-      let pts = mapBreakpoints(1/Math.max(rel,0.01),[[1.6,10],[1.25,8],[1.0,6],[0.8,4],[0,2]]);
-      if(s.peg!==null){ pts = pts*0.7 + mapBreakpoints(2-s.peg,[[1.5,3],[1,2.2],[0.5,1]])*(3/3)*0; }
-      parts.valuation = {points: clampScore(pts,10), max:10, available:true};
-    } else parts.valuation = {points:0,max:10,available:false};
-  }
-  // Technical Momentum (7)
-  {
-    const conds = [TECH_CONDITIONS.aboveDma50(s), TECH_CONDITIONS.aboveDma200(s), TECH_CONDITIONS.goldenCross(s)];
-    const rsiOk = s.rsi!==null && s.rsi>=40 && s.rsi<=70;
-    const have = s.dma50!==null || s.dma200!==null || s.rsi!==null || s.change1y!==null;
-    if(have){
-      let pts=0;
-      pts += conds.filter(Boolean).length * 1.4;
-      if(rsiOk) pts += 1.5;
-      if(s.change1y!==null && s.change1y>0) pts += Math.min(1.5, s.change1y/40);
-      parts.technical = {points: clampScore(pts,7), max:7, available:true};
-    } else parts.technical = {points:0,max:7,available:false};
-  }
-  // Dividend Quality (3)
-  {
-    if(s.divYield!==null){
-      let pts = mapBreakpoints(s.divYield,[[8,1.5],[5,2.2],[3,3],[1,1.5],[0,0.5]]);
-      if(s.payoutRatio!==null && s.payoutRatio>0 && s.payoutRatio<=80) pts = Math.min(3,pts+0.5);
-      if(s.divConsistency!==null) pts = Math.min(3, pts*(s.divConsistency/100)+pts*0.3);
-      parts.dividend = {points: clampScore(pts,3), max:3, available:true};
-    } else parts.dividend = {points:0,max:3,available:false};
-  }
-  // Business / Ownership Quality (5)
-  {
-    if(s.sponsorHolding!==null || s.freeFloat!==null){
-      let pts=0, weight=0;
-      if(s.sponsorHolding!==null){ pts += mapBreakpoints(s.sponsorHolding,[[50,3],[30,2],[15,1]]); weight+=3; }
-      if(s.freeFloat!==null){ pts += mapBreakpoints(s.freeFloat,[[15,2],[8,1.4],[3,0.8]]); weight+=2; }
-      parts.quality = {points: clampScore(pts*(5/Math.max(weight,1)),5), max:5, available:true};
-    } else parts.quality = {points:0,max:5,available:false};
-  }
-  return parts;
-}
-
-function computeCheetahScore(s, sectorStats){
-  const parts = computeSubscores(s, sectorStats);
-  const flags = detectRedFlags(s);
-  let earned=0, maxAvailable=0;
-  Object.values(parts).forEach(p=>{ if(p.available){ earned+=p.points; maxAvailable+=p.max; } });
-  const totalWeight = 20+15+15+15+10+10+7+3+5; // 100
-  let total = maxAvailable>0 ? (earned/maxAvailable)*100 : null;
-  // small penalty for red flags (max -8), never below 0
-  if(total!==null && flags.length){ total = Math.max(0, total - Math.min(8, flags.length*2)); }
-  const coverage = maxAvailable/totalWeight;
-  const incomplete = coverage < 0.6;
-  return {
-    total: total===null? null : Math.round(total*10)/10,
-    parts, flags, coverage: Math.round(coverage*100), incomplete
-  };
-}
-
-function scoreClass(total){
-  if(total===null) return {cls:"incomplete", label:"N/A"};
-  if(total>=90) return {cls:"cheetah", label:"🔥 CHEETAH"};
-  if(total>=80) return {cls:"strong", label:"🟢 STRONG"};
-  if(total>=70) return {cls:"good", label:"🟡 GOOD"};
-  if(total>=60) return {cls:"watch", label:"🟠 WATCH"};
-  return {cls:"weak", label:"🔴 WEAK"};
-}
-
-const RED_FLAG_DEFS = [
-  {key:"profitCashDiverge", label:"Profit rising, cash flow falling",
-   test:s=> s.profitGrowthYoY!==null && s.ocfGrowth!==null && s.profitGrowthYoY>5 && s.ocfGrowth<0},
-  {key:"receivablesOutpace", label:"Receivables rising much faster than sales",
-   test:s=> s.receivablesGrowth!==null && s.revGrowthYoY!==null && (s.receivablesGrowth - s.revGrowthYoY) > 15},
-  {key:"oneOffEps", label:"EPS growth likely includes one-off income",
-   test:s=> s.nonRecurringIncomeFlag===true},
-  {key:"roeFromEquityFall", label:"ROE rising because equity has fallen",
-   test:s=> s.equityGrowth!==null && s.equityGrowth<0 && s.roe!==null && s.roe>15},
-  {key:"lowPeTempEarnings", label:"Very low P/E possibly from temporary earnings spike",
-   test:s=> s.profitGrowthYoY!==null && s.profitCagr3y!==null && s.profitCagr3y>0 &&
-            s.profitGrowthYoY > s.profitCagr3y*3 && s.pe!==null && s.sectorAvgPe!==null && s.pe < s.sectorAvgPe*0.5},
-  {key:"yieldFromPriceFall", label:"High dividend yield driven by falling share price",
-   test:s=> s.divYield!==null && s.divYield>7 && s.change1y!==null && s.change1y< -20},
-  {key:"rapidDebtIncrease", label:"Rapid increase in debt",
-   test:s=> s.debtGrowth!==null && s.debtGrowth>30},
-  {key:"decliningMargins", label:"Declining margins",
-   test:s=> s.marginTrend!==null && s.marginTrend<0},
-  {key:"frequentDilution", label:"Frequent share dilution",
-   test:s=> s.sharesOutstandingGrowth!==null && s.sharesOutstandingGrowth>10},
-  {key:"weakLiquidity", label:"Weak liquidity",
-   test:s=> (s.currentRatio!==null && s.currentRatio<1) || (s.quickRatio!==null && s.quickRatio<0.5)},
-  {key:"auditorWarning", label:"Auditor qualification / warning on file",
-   test:s=> !!s.auditorNote}
-];
-
-function detectRedFlags(s){
-  return RED_FLAG_DEFS.filter(f=> { try { return f.test(s); } catch(e){ return false; } }).map(f=>f.label);
-}
-
-function computeSectorStats(stocks){
-  const bySector = {};
-  stocks.forEach(s=>{
-    const sec = s.sector || "Other";
-    if(!bySector[sec]) bySector[sec] = {pe:[], roe:[], growth:[]};
-    if(s.pe!==null) bySector[sec].pe.push(s.pe);
-    if(s.roe!==null) bySector[sec].roe.push(s.roe);
-    if(s.revGrowthYoY!==null) bySector[sec].growth.push(s.revGrowthYoY);
-  });
-  const stats = {};
-  Object.keys(bySector).forEach(sec=>{
-    const g = bySector[sec];
-    const avg = arr=> arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : null;
-    stats[sec] = {avgPe: avg(g.pe), avgRoe: avg(g.roe), avgGrowth: avg(g.growth)};
-  });
-  return stats;
-}
-
-/* ============================================================
-   6. UI
-   State, rendering, events.
-   ============================================================ */
-const State = {
-  stocks: [],
-  dataSource: null,
-  lastUpdated: null,
-  sectorStats: {},
-  view: "dashboard",
-  search: "",
-  sector: "",
-  ranges: {}, // field -> {min,max}
-  toggles: {}, // field -> bool
-  sort: {field:"cheetahScore", dir:"desc"},
-  page: 1,
-  pageSize: 50,
-  visibleCols: null, // set below to defaults
-  savedScreens: [],
-  presetActive: null
-};
-
-const DEFAULT_COLUMNS = [
-  {key:"rank", label:"Rank"},
-  {key:"symbol", label:"Symbol"},
-  {key:"company", label:"Company"},
-  {key:"sector", label:"Sector"},
-  {key:"price", label:"Price"},
-  {key:"change1d", label:"Change %"},
-  {key:"pe", label:"P/E"},
-  {key:"roe", label:"ROE"},
-  {key:"eps", label:"EPS"},
-  {key:"epsGrowthYoY", label:"EPS Growth"},
-  {key:"revGrowthYoY", label:"Revenue Growth"},
-  {key:"profitGrowthYoY", label:"Profit Growth"},
-  {key:"debtEquity", label:"Debt/Equity"},
-  {key:"ocf", label:"OCF"},
-  {key:"fcf", label:"FCF"},
-  {key:"divYield", label:"Dividend Yield"},
-  {key:"sponsorHolding", label:"Sponsor Holding"},
-  {key:"rsi", label:"RSI"},
-  {key:"dma50", label:"50 DMA"},
-  {key:"dma200", label:"200 DMA"},
-  {key:"change1y", label:"1Y Return"},
-  {key:"cheetahScore", label:"Cheetah Score"},
-  {key:"trend", label:"Trend"},
-  {key:"risk", label:"Risk"}
-];
-State.visibleCols = DEFAULT_COLUMNS.map(c=>c.key);
-
-const RANGE_FIELDS = [
-  {key:"roe", label:"ROE %", ph:"e.g. 20"},
-  {key:"epsGrowthYoY", label:"EPS Growth %"},
-  {key:"profitGrowthYoY", label:"Profit Growth %"},
-  {key:"revGrowthYoY", label:"Revenue Growth %"},
-  {key:"debtEquity", label:"Debt/Equity"},
-  {key:"pe", label:"P/E"},
-  {key:"divYield", label:"Dividend Yield %"},
-  {key:"sponsorHolding", label:"Sponsor Holding %"},
-  {key:"rsi", label:"RSI"}
-];
-const TOGGLE_FIELDS = [
-  {key:"aboveDma20", label:"Price above 20 DMA"},
-  {key:"aboveDma50", label:"Price above 50 DMA"},
-  {key:"aboveDma200", label:"Price above 200 DMA"},
-  {key:"goldenCross", label:"Golden Cross (50>200 DMA)"},
-  {key:"breakout", label:"Near 52W High / Breakout"},
-  {key:"volumeBreakout", label:"Volume-supported breakout"}
-];
-
-const PRESETS = {
-  "🔥 Cheetah": {ranges:{roe:{min:18,max:null}, epsGrowthYoY:{min:15,max:null}, debtEquity:{min:null,max:1}}, toggles:{aboveDma50:true}},
-  "💰 Value": {ranges:{pe:{min:null,max:12}, roe:{min:12,max:null}}, toggles:{}},
-  "💵 Dividend": {ranges:{divYield:{min:5,max:null}}, toggles:{}},
-  "📈 Growth": {ranges:{revGrowthYoY:{min:15,max:null}, profitGrowthYoY:{min:15,max:null}}, toggles:{}},
-  "🚀 Momentum": {ranges:{}, toggles:{aboveDma50:true, aboveDma200:true, goldenCross:true}},
-  "🛡️ Low Risk": {ranges:{debtEquity:{min:null,max:0.5}, currentRatio:{min:1,max:null}}, toggles:{}}
-};
-
-const VIEW_PRESET_FILTER = {
-  cheetah: s => s._score && s._score.total!==null && s._score.total>=80,
-  growth: s => (s.revGrowthYoY!==null && s.revGrowthYoY>=15) || (s.profitGrowthYoY!==null && s.profitGrowthYoY>=15),
-  value: s => s.pe!==null && s.pe>0 && s.pe<=15,
-  dividend: s => s.divYield!==null && s.divYield>=4,
-  momentum: s => TECH_CONDITIONS.aboveDma50(s) && TECH_CONDITIONS.aboveDma200(s)
-};
-
-function fmt(v, decimals, suffix){
-  if(v===null || v===undefined || isNaN(v)) return '<span class="na">N/A</span>';
-  return v.toFixed(decimals!==undefined?decimals:2) + (suffix||"");
-}
-function fmtPct(v){ return fmt(v,2,"%"); }
-function changeClass(v){ if(v===null||v===undefined) return "flat"; return v>0?"up":(v<0?"down":"flat"); }
-function changeArrow(v){ if(v===null||v===undefined) return ""; return v>0?"▲":(v<0?"▼":"—"); }
-
-// ---- recompute derived data (scores, sector stats) whenever stock set changes
-function recomputeDerived(){
-  State.sectorStats = computeSectorStats(State.stocks);
-  State.stocks.forEach(s=>{
-    s._score = computeCheetahScore(s, State.sectorStats[s.sector||"Other"]);
-    s._flags = s._score.flags;
-  });
-}
-
-function applyPipeline(){
-  let list = State.stocks.slice();
-  list = Screening.search(list, State.search);
-  list = Screening.bySector(list, State.sector);
-  list = Screening.byRanges(list, State.ranges);
-  list = Screening.byToggles(list, State.toggles);
-  if(VIEW_PRESET_FILTER[State.view]) list = list.filter(VIEW_PRESET_FILTER[State.view]);
-  list = Screening.sort(list, State.sort.field, State.sort.dir);
-  return list;
-}
-
-/* ---------- rendering: nav / views ---------- */
-function setView(v){
-  State.view = v; State.page = 1;
-  document.querySelectorAll(".navtab").forEach(el=> el.classList.toggle("active", el.dataset.view===v));
-  document.getElementById("view-dashboard").classList.toggle("hidden", v!=="dashboard");
-  const isTableView = ["stocks","cheetah","growth","value","dividend","momentum"].includes(v);
-  document.getElementById("view-stocks").classList.toggle("hidden", !isTableView);
-  document.getElementById("view-settings").classList.toggle("hidden", v!=="settings");
-  if(v==="dashboard") renderDashboard();
-  if(isTableView) renderTable();
-  if(v==="settings") renderSettings();
-}
-
-function renderDashboard(){
-  const stats = document.getElementById("dashStats");
-  const total = State.stocks.length;
-  const qualified = State.stocks.filter(s=> s._score && s._score.total!==null).length;
-  const cheetahCount = State.stocks.filter(s=> s._score && s._score.total>=90).length;
-  const strongCount = State.stocks.filter(s=> s._score && s._score.total>=80 && s._score.total<90).length;
-  const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : null;
-  const avgRoe = avg(State.stocks.map(s=>s.roe).filter(v=>v!==null));
-  const avgEps = avg(State.stocks.map(s=>s.epsGrowthYoY).filter(v=>v!==null));
-  const avgProfit = avg(State.stocks.map(s=>s.profitGrowthYoY).filter(v=>v!==null));
-  const ups = State.stocks.filter(s=> s.change1d!==null && s.change1d>0).length;
-  const downs = State.stocks.filter(s=> s.change1d!==null && s.change1d<0).length;
-  const marketMood = (ups+downs)===0 ? "—" : (ups>downs ? "🟢 Bullish" : (downs>ups ? "🔴 Bearish" : "🟡 Neutral"));
-
-  const cards = [
-    ["Total Stocks", total, ""],
-    ["Qualified Stocks", qualified, "have enough data to score"],
-    ["Cheetah Stocks", cheetahCount, "score ≥ 90"],
-    ["Strong Stocks", strongCount, "score 80–89"],
-    ["Avg ROE", avgRoe!==null?avgRoe.toFixed(1)+"%":"N/A", ""],
-    ["Avg EPS Growth", avgEps!==null?avgEps.toFixed(1)+"%":"N/A", ""],
-    ["Avg Profit Growth", avgProfit!==null?avgProfit.toFixed(1)+"%":"N/A", ""],
-    ["Market Mood", marketMood, ups+" up / "+downs+" down today"]
-  ];
-  stats.innerHTML = cards.map(c=>`<div class="stat-card"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="sub">${c[2]}</div></div>`).join("");
-
-  renderMiniList("topCheetah", [...State.stocks].filter(s=>s._score.total!==null).sort((a,b)=>b._score.total-a._score.total).slice(0,10), s=> scoreClass(s._score.total).label);
-  renderMiniList("topGrowth", [...State.stocks].filter(s=>s.revGrowthYoY!==null).sort((a,b)=>b.revGrowthYoY-a.revGrowthYoY).slice(0,10), s=> fmtPct(s.revGrowthYoY)+" rev");
-  renderMiniList("topValue", [...State.stocks].filter(s=>s.pe!==null && s.pe>0).sort((a,b)=>a.pe-b.pe).slice(0,10), s=> "P/E "+fmt(s.pe,1));
-  renderMiniList("topDividend", [...State.stocks].filter(s=>s.divYield!==null).sort((a,b)=>b.divYield-a.divYield).slice(0,10), s=> fmtPct(s.divYield));
-  renderMiniList("topMomentum", [...State.stocks].filter(s=>s.change1y!==null).sort((a,b)=>b.change1y-a.change1y).slice(0,10), s=> fmtPct(s.change1y)+" 1Y");
-}
-
-function renderMiniList(id, list, sideFn){
-  const el = document.getElementById(id);
-  if(!list.length){ el.innerHTML = '<div class="empty-state" style="padding:20px;"><div>No data</div></div>'; return; }
-  el.innerHTML = list.map(s=>`
-    <div class="mini-row" data-sym="${s._id}">
-      <div><span class="sym">${s.symbol||"?"}</span> <span class="co">${s.company||""}</span></div>
-      <div class="mono">${sideFn(s)}</div>
-    </div>`).join("");
-  el.querySelectorAll(".mini-row").forEach(row=> row.addEventListener("click", ()=> openDetail(row.dataset.sym)));
-}
-
-/* ---------- table rendering ---------- */
-function renderTableHead(){
-  const row = document.getElementById("tableHeadRow");
-  const cols = DEFAULT_COLUMNS.filter(c=> State.visibleCols.includes(c.key));
-  row.innerHTML = cols.map(c=>{
-    const arrow = State.sort.field===c.key ? (State.sort.dir==="asc"?"▲":"▼") : "";
-    return `<th data-key="${c.key}">${c.label}<span class="arrow">${arrow}</span></th>`;
-  }).join("");
-  row.querySelectorAll("th").forEach(th=> th.addEventListener("click", ()=>{
-    const key = th.dataset.key;
-    if(State.sort.field===key) State.sort.dir = State.sort.dir==="asc"?"desc":"asc";
-    else { State.sort.field=key; State.sort.dir = key==="cheetahScore"?"desc":"asc"; }
-    renderTable();
-  }));
-}
-
-function cellValue(s, key, rank){
-  switch(key){
-    case "rank": return rank;
-    case "symbol": return `<td class="txt" style="font-weight:700;">${s.symbol||"?"}</td>`;
-    case "company": return `<td class="txt" style="color:var(--text-muted);">${s.company||"N/A"}</td>`;
-    case "sector": return `<td class="txt">${s.sector||"N/A"}</td>`;
-    case "price": return `<td>${fmt(s.price,2)}</td>`;
-    case "change1d": return `<td class="${changeClass(s.change1d)}">${changeArrow(s.change1d)} ${fmtPct(s.change1d)}</td>`;
-    case "pe": return `<td>${fmt(s.pe,1)}</td>`;
-    case "roe": return `<td>${fmtPct(s.roe)}</td>`;
-    case "eps": return `<td>${fmt(s.eps,2)}</td>`;
-    case "epsGrowthYoY": return `<td class="${changeClass(s.epsGrowthYoY)}">${fmtPct(s.epsGrowthYoY)}</td>`;
-    case "revGrowthYoY": return `<td class="${changeClass(s.revGrowthYoY)}">${fmtPct(s.revGrowthYoY)}</td>`;
-    case "profitGrowthYoY": return `<td class="${changeClass(s.profitGrowthYoY)}">${fmtPct(s.profitGrowthYoY)}</td>`;
-    case "debtEquity": return `<td>${fmt(s.debtEquity,2)}</td>`;
-    case "ocf": return `<td>${fmt(s.ocf,0)}</td>`;
-    case "fcf": return `<td>${fmt(s.fcf,0)}</td>`;
-    case "divYield": return `<td>${fmtPct(s.divYield)}</td>`;
-    case "sponsorHolding": return `<td>${fmtPct(s.sponsorHolding)}</td>`;
-    case "rsi": return `<td>${fmt(s.rsi,1)}</td>`;
-    case "dma50": return `<td>${fmt(s.dma50,2)}</td>`;
-    case "dma200": return `<td>${fmt(s.dma200,2)}</td>`;
-    case "change1y": return `<td class="${changeClass(s.change1y)}">${fmtPct(s.change1y)}</td>`;
-    case "cheetahScore": {
-      const sc = s._score; const meta = scoreClass(sc.total);
-      return `<td><span class="badge ${meta.cls}">${sc.total!==null? sc.total.toFixed(1) : "N/A"} ${meta.label}</span></td>`;
-    }
-    case "trend": {
-      const up = TECH_CONDITIONS.aboveDma50(s) && TECH_CONDITIONS.aboveDma200(s);
-      return `<td class="txt">${up?'<span class="up">Uptrend</span>':'<span class="down">Weak/Down</span>'}</td>`;
-    }
-    case "risk": {
-      const n = s._flags ? s._flags.length : 0;
-      return `<td class="txt">${n===0?'<span class="up">Low</span>':(n<=2?'<span style="color:var(--gold)">Moderate</span>':'<span class="down">High</span>')}</td>`;
-    }
-    default: return `<td>N/A</td>`;
-  }
-}
-
-let currentPageList = [];
-function renderTable(){
-  const list = applyPipeline();
-  currentPageList = list;
-  document.getElementById("rowCountLabel").textContent = list.length + " stocks";
-  document.getElementById("activeFilterCount").textContent = activeFilterCountText();
-
-  const hasAnyData = State.stocks.length>0;
-  document.getElementById("stocksEmptyState").classList.toggle("hidden", hasAnyData);
-  document.getElementById("tableWrap").classList.toggle("hidden", !hasAnyData);
-  document.getElementById("paginationBar").classList.toggle("hidden", !hasAnyData);
-  if(!hasAnyData) return;
-
-  renderTableHead();
-  const totalPages = Math.max(1, Math.ceil(list.length / State.pageSize));
-  if(State.page>totalPages) State.page = totalPages;
-  const startIdx = (State.page-1)*State.pageSize;
-  const pageItems = list.slice(startIdx, startIdx+State.pageSize);
-  const cols = DEFAULT_COLUMNS.filter(c=> State.visibleCols.includes(c.key));
-
-  const body = document.getElementById("tableBody");
-  body.innerHTML = pageItems.map((s,i)=>{
-    const rank = startIdx+i+1;
-    const cells = cols.map(c=> c.key==="rank" ? `<td>${rank}</td>` : cellValue(s,c.key,rank)).join("");
-    return `<tr data-sym="${s._id}">${cells}</tr>`;
-  }).join("");
-  body.querySelectorAll("tr").forEach(tr=> tr.addEventListener("click", ()=> openDetail(tr.dataset.sym)));
-  document.getElementById("pageLabel").textContent = `Page ${State.page} of ${totalPages}`;
-}
-
-function activeFilterCountText(){
-  let n=0;
-  Object.values(State.ranges).forEach(r=>{ if(r.min!==null||r.max!==null) n++; });
-  Object.values(State.toggles).forEach(v=>{ if(v) n++; });
-  if(State.sector) n++;
-  return n? `(${n})` : "";
-}
-
-/* ---------- filter panel ---------- */
-function renderFilterPanel(){
-  const rangeWrap = document.getElementById("rangeFilters");
-  rangeWrap.innerHTML = RANGE_FIELDS.map(f=>{
-    const cur = State.ranges[f.key] || {min:null,max:null};
-    return `<div class="range-row">
-      <label>${f.label}</label>
-      <input type="number" step="any" placeholder="min" data-range="${f.key}" data-bound="min" value="${cur.min??""}">
-      <input type="number" step="any" placeholder="max" data-range="${f.key}" data-bound="max" value="${cur.max??""}">
-    </div>`;
-  }).join("");
-  rangeWrap.querySelectorAll("input").forEach(inp=> inp.addEventListener("input", ()=>{
-    const k = inp.dataset.range, b = inp.dataset.bound;
-    if(!State.ranges[k]) State.ranges[k] = {min:null,max:null};
-    const v = inp.value===""? null : parseFloat(inp.value);
-    State.ranges[k][b] = isNaN(v)?null:v;
-  }));
-
-  const toggleWrap = document.getElementById("toggleFilters");
-  toggleWrap.innerHTML = TOGGLE_FIELDS.map(f=>`
-    <div class="toggle-row"><input type="checkbox" id="tg_${f.key}" ${State.toggles[f.key]?"checked":""}> <label for="tg_${f.key}">${f.label}</label></div>
-  `).join("");
-  toggleWrap.querySelectorAll("input").forEach(cb=> cb.addEventListener("change", ()=>{
-    State.toggles[cb.id.replace("tg_","")] = cb.checked;
-  }));
-
-  const presetWrap = document.getElementById("presetBtns");
-  presetWrap.innerHTML = Object.keys(PRESETS).map(name=>`<div class="chip" data-preset="${name}">${name}</div>`).join("") +
-    State.savedScreens.map(n=>`<div class="chip" data-saved="${n.name}">💾 ${n.name}</div>`).join("");
-  presetWrap.querySelectorAll("[data-preset]").forEach(chip=> chip.addEventListener("click", ()=>{
-    const p = PRESETS[chip.dataset.preset];
-    State.ranges = JSON.parse(JSON.stringify(p.ranges));
-    State.toggles = JSON.parse(JSON.stringify(p.toggles));
-    renderFilterPanel();
-  }));
-  presetWrap.querySelectorAll("[data-saved]").forEach(chip=> chip.addEventListener("click", ()=>{
-    const sc = State.savedScreens.find(x=>x.name===chip.dataset.saved);
-    if(sc){ State.ranges = JSON.parse(JSON.stringify(sc.ranges)); State.toggles = JSON.parse(JSON.stringify(sc.toggles)); renderFilterPanel(); }
-  }));
-}
-
-/* ---------- settings ---------- */
-function renderSettings(){
-  document.getElementById("cfgPsxUrl").value = DataConfig.psxBaseUrl;
-  document.getElementById("cfgScsUrl").value = DataConfig.scsBaseUrl;
-  const aliasEl = document.getElementById("aliasPreview");
-  aliasEl.textContent = Object.keys(ALIAS_MAP).slice(0,18).map(k=> k+": "+ALIAS_MAP[k].join(", ")).join("\n") + "\n… (all "+Object.keys(ALIAS_MAP).length+" fields mapped)";
-}
-
-/* ---------- stock detail modal ---------- */
-let detailRangeDays = 365;
-function openDetail(id){
-  const s = State.stocks.find(x=>x._id===id);
-  if(!s) return;
-  document.getElementById("detailSymbol").textContent = s.symbol || "?";
-  document.getElementById("detailCompany").textContent = s.company || "";
-  const meta = scoreClass(s._score.total);
-
-  const reasons = buildReasons(s);
-  const risks = s._flags.length ? s._flags : ["No red flags detected from the fields provided."];
-
-  const body = document.getElementById("detailBody");
-  body.innerHTML = `
-    <div class="detail-hero">
-      <div>
-        <div class="px">${fmt(s.price,2)} <span class="${changeClass(s.change1d)}" style="font-size:16px;">${changeArrow(s.change1d)} ${fmtPct(s.change1d)}</span></div>
-        <div style="color:var(--text-muted);font-size:12.5px;margin-top:4px;">${s.sector||"Sector N/A"} · 52W ${fmt(s.week52Low,2)}–${fmt(s.week52High,2)}</div>
-      </div>
-      <div style="text-align:right;">
-        <span class="badge ${meta.cls}" style="font-size:15px;padding:6px 12px;">${s._score.total!==null?s._score.total.toFixed(1):"N/A"} ${meta.label}</span>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${s._score.incomplete? "⚠️ INCOMPLETE DATA · "+s._score.coverage+"% coverage" : s._score.coverage+"% data coverage"}</div>
-      </div>
-    </div>
-
-    <div class="flagbar">${s._flags.map(f=>`<span class="flag-pill">⚠ ${f}</span>`).join("")}</div>
-
-    <div class="tabs-row" id="detailTabs">
-      <div class="t active" data-tab="overview">Overview</div>
-      <div class="t" data-tab="financials">Financials</div>
-      <div class="t" data-tab="technical">Technical</div>
-      <div class="t" data-tab="ownership">Ownership</div>
-      <div class="t" data-tab="charts">Charts</div>
-      <div class="t" data-tab="why">Why / Risks</div>
-    </div>
-    <div id="detailTabBody"></div>
-  `;
-
-  function renderTab(tab){
-    const wrap = document.getElementById("detailTabBody");
-    if(tab==="overview"){
-      wrap.innerHTML = kvGrid([
-        ["P/E", fmt(s.pe,1)], ["Forward P/E", fmt(s.forwardPe,1)], ["P/B", fmt(s.pb,2)], ["PEG", fmt(s.peg,2)],
-        ["EV/EBITDA", fmt(s.evEbitda,1)], ["Dividend Yield", fmtPct(s.divYield)],
-        ["ROE", fmtPct(s.roe)], ["ROA", fmtPct(s.roa)], ["Net Margin", fmtPct(s.netMargin)],
-        ["EPS", fmt(s.eps,2)], ["Sector P/E", fmt(s.sectorAvgPe,1)]
-      ]);
-    } else if(tab==="financials"){
-      wrap.innerHTML = kvGrid([
-        ["Revenue Growth YoY", fmtPct(s.revGrowthYoY)], ["Revenue CAGR 3Y", fmtPct(s.revCagr3y)], ["Revenue CAGR 5Y", fmtPct(s.revCagr5y)],
-        ["Profit Growth YoY", fmtPct(s.profitGrowthYoY)], ["Profit CAGR 3Y", fmtPct(s.profitCagr3y)], ["Profit CAGR 5Y", fmtPct(s.profitCagr5y)],
-        ["EPS Growth YoY", fmtPct(s.epsGrowthYoY)], ["EPS CAGR 3Y", fmtPct(s.epsCagr3y)],
-        ["Debt/Equity", fmt(s.debtEquity,2)], ["Current Ratio", fmt(s.currentRatio,2)], ["Quick Ratio", fmt(s.quickRatio,2)],
-        ["Interest Coverage", fmt(s.interestCoverage,2)], ["Cash", fmt(s.cash,0)],
-        ["OCF", fmt(s.ocf,0)], ["FCF", fmt(s.fcf,0)], ["OCF Growth", fmtPct(s.ocfGrowth)], ["FCF Growth", fmtPct(s.fcfGrowth)],
-        ["OCF/Net Profit", fmt(s.ocfToNetProfit,2)], ["Payout Ratio", fmtPct(s.payoutRatio)], ["Dividend Growth", fmtPct(s.divGrowth)]
-      ]);
-    } else if(tab==="technical"){
-      wrap.innerHTML = kvGrid([
-        ["RSI", fmt(s.rsi,1)], ["MACD", fmt(s.macd,2)], ["Volume", fmt(s.volume,0)], ["Avg Volume", fmt(s.avgVolume,0)],
-        ["20 DMA", fmt(s.dma20,2)], ["50 DMA", fmt(s.dma50,2)], ["100 DMA", fmt(s.dma100,2)], ["200 DMA", fmt(s.dma200,2)],
-        ["1W Change", fmtPct(s.change1w)], ["1M Change", fmtPct(s.change1m)], ["3M Change", fmtPct(s.change3m)],
-        ["6M Change", fmtPct(s.change6m)], ["1Y Change", fmtPct(s.change1y)],
-        ["52W High", fmt(s.week52High,2)], ["52W Low", fmt(s.week52Low,2)]
-      ]);
-    } else if(tab==="ownership"){
-      wrap.innerHTML = kvGrid([
-        ["Sponsor Holding", fmtPct(s.sponsorHolding)], ["Institutional Holding", fmtPct(s.institutionalHolding)],
-        ["Free Float", fmtPct(s.freeFloat)], ["Insider/Director Holding", fmtPct(s.insiderHolding)]
-      ]);
-    } else if(tab==="charts"){
-      const metrics = [["price","Price"],["revenue","Revenue"],["profit","Profit"],["eps","EPS"],["roe","ROE"],["ocf","Operating Cash Flow"],["fcf","Free Cash Flow"]];
-      if(!s.history){
-        wrap.innerHTML = '<div class="empty-state" style="padding:30px;"><div>No historical series imported for this stock.</div><div style="font-size:11.5px;margin-top:6px;">Import via JSON with a "history" object to enable charts.</div></div>';
-      } else {
-        wrap.innerHTML = `
-          <div class="chart-range" id="chartRanges">
-            ${["1M","3M","6M","1Y","3Y","5Y"].map(r=>`<div class="chip ${r==='1Y'?'active':''}" data-range="${r}">${r}</div>`).join("")}
-          </div>
-          ${metrics.filter(m=> s.history[m[0]] && s.history[m[0]].length).map(m=>`
-            <div style="margin-bottom:14px;">
-              <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:4px;">${m[1]}</div>
-              <canvas class="chart" data-metric="${m[0]}" height="180"></canvas>
-            </div>`).join("")}
-        `;
-        const drawAll = (range)=>{
-          document.querySelectorAll('[data-metric]').forEach(cv=> drawSeries(cv, s.history, cv.dataset.metric, range));
+        CUR = {
+          tf: curTF, live: true, baselineOnly: baselineOnly,
+          total: total, withEma: withEma,
+          headline: "Live scan · " + TF_LABEL[curTF] + " · " + tLabel,
+          fileDate: p.day + "-" + p.month + "-" + p.year,
+          prov: prov && !baselineOnly,
+          buy: buy, sell: sell
         };
-        wrap.querySelectorAll("[data-range]").forEach(chip=> chip.addEventListener("click", ()=>{
-          wrap.querySelectorAll("[data-range]").forEach(c=>c.classList.remove("active")); chip.classList.add("active");
-          drawAll(chip.dataset.range);
-        }));
-        drawAll("1Y");
+        render();
+        updateBaseInfo();
+
+        // Market overview — live counts
+        var tone = bull > bear ? "zyada tar upar" : (bear > bull ? "zyada tar neechay" : "mila jula");
+        document.getElementById("ovMain").innerHTML =
+          "Is live scan mein <b>" + fmtNum(withEma) + " stocks</b> ke EMA data mile — un mein se <b>" +
+          fmtNum(bull) + " bullish</b> hain (EMA 9, EMA 26 ke upar) aur <b>" + fmtNum(bear) +
+          " bearish</b>. Market ka rujhan " + tone + " ki taraf hai.";
+        document.getElementById("ovSub").textContent = curTF === "1D"
+          ? "Daily cross 23 Nov 2026 ki baseline (426 stocks) se compare hota hai — jin stocks ki baseline value maujood nahi, un ka cross is list mein nahi aata."
+          : (baselineOnly
+              ? TF_LABEL[curTF] + " ka baseline is scan se set ho gaya hai — agli scan se is timeframe ke cross nazar aayenge."
+              : TF_LABEL[curTF] + " ke cross is session ki pichli scan se compare kar ke nikle hain.");
+
+        if (baselineOnly) {
+          setStatus("Live scan mukammal — " + fmtNum(total) + " stocks scan hue. " + TF_LABEL[curTF] + " ka baseline set ho gaya hai; cross agli scan se nazar aayenge.", "ok");
+        } else {
+          setStatus("Live scan mukammal — " + buy.length + " BUY aur " + sell.length + " SELL cross mile · " + tLabel + (prov ? " · Provisional (market open hai)" : " · Final values"), "ok");
+        }
       }
-    } else if(tab==="why"){
-      wrap.innerHTML = `
-        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;margin:10px 0 4px;">Why this stock ranked ${meta.label.replace(/^[^\s]+\s/,"")}</div>
-        <ul class="reason-list">${reasons.map(r=>`<li>✅ ${r}</li>`).join("") || "<li>Not enough data to determine strengths.</li>"}</ul>
-        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;margin:16px 0 4px;">Top risks</div>
-        <ul class="reason-list">${risks.slice(0,5).map(r=>`<li>⚠️ ${r}</li>`).join("")}</ul>
-      `;
-    }
-  }
-  document.getElementById("detailTabs").querySelectorAll(".t").forEach(t=> t.addEventListener("click", ()=>{
-    document.getElementById("detailTabs").querySelectorAll(".t").forEach(x=>x.classList.remove("active"));
-    t.classList.add("active"); renderTab(t.dataset.tab);
-  }));
-  renderTab("overview");
-  document.getElementById("detailModal").classList.remove("hidden");
-}
 
-function kvGrid(pairs){
-  return `<div class="kv-grid">${pairs.map(p=>`<div class="kv"><div class="k">${p[0]}</div><div class="v">${p[1]}</div></div>`).join("")}</div>`;
-}
+      // Timeframe buttons
+      Array.prototype.forEach.call(document.querySelectorAll(".tf-btn"), function (b) {
+        b.addEventListener("click", function () {
+          if (scanning) return;
+          curTF = b.getAttribute("data-tf");
+          Array.prototype.forEach.call(document.querySelectorAll(".tf-btn"), function (x) {
+            var on = x === b;
+            x.classList.toggle("active", on);
+            x.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+          updateBaseInfo();
+          runScan();
+        });
+      });
+      document.getElementById("scanBtn").addEventListener("click", runScan);
 
-function buildReasons(s){
-  const r = [];
-  if(s.revGrowthYoY!==null && s.revGrowthYoY>15) r.push(`Revenue growing ${s.revGrowthYoY.toFixed(1)}% YoY`);
-  if(s.profitGrowthYoY!==null && s.profitGrowthYoY>15) r.push(`Profit growing ${s.profitGrowthYoY.toFixed(1)}% YoY`);
-  if(s.epsGrowthYoY!==null && s.epsGrowthYoY>15) r.push(`EPS growing ${s.epsGrowthYoY.toFixed(1)}% YoY`);
-  if(s.roe!==null && s.roe>18) r.push(`Strong ROE of ${s.roe.toFixed(1)}%`);
-  if(s.ocfToNetProfit!==null && s.ocfToNetProfit>1) r.push(`Cash flow conversion above net profit (${s.ocfToNetProfit.toFixed(2)}x)`);
-  if(s.debtEquity!==null && s.debtEquity<0.5) r.push(`Low leverage — Debt/Equity of ${s.debtEquity.toFixed(2)}`);
-  if(s.pe!==null && s.sectorAvgPe!==null && s.pe<s.sectorAvgPe) r.push(`Trading below sector-average P/E (${s.pe.toFixed(1)} vs ${s.sectorAvgPe.toFixed(1)})`);
-  if(s.divYield!==null && s.divYield>4) r.push(`Attractive dividend yield of ${s.divYield.toFixed(1)}%`);
-  if(TECH_CONDITIONS.aboveDma50(s) && TECH_CONDITIONS.aboveDma200(s)) r.push(`Price trending above both 50 and 200 DMA`);
-  if(s.sponsorHolding!==null && s.sponsorHolding>50) r.push(`High sponsor/promoter holding of ${s.sponsorHolding.toFixed(1)}%`);
-  return r.slice(0,5);
-}
+      render();
+      runScan(); // auto live scan on open (Daily)
 
-// lightweight canvas line chart, no external library
-function drawSeries(canvas, history, metricKey, range){
-  const ctx = canvas.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth || 600, h = canvas.clientHeight || 180;
-  canvas.width = w*dpr; canvas.height = h*dpr; ctx.scale(dpr,dpr);
-  ctx.clearRect(0,0,w,h);
-
-  const rangeToCount = {"1M":22,"3M":66,"6M":132,"1Y":252,"3Y":756,"5Y":1260};
-  let series = history[metricKey] || [];
-  const dates = history.dates || [];
-  let n = Math.min(series.length, rangeToCount[range] || series.length);
-  series = series.slice(-n);
-  const dSlice = dates.slice(-n);
-  if(series.length<2){ ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-faint'); ctx.font="12px sans-serif"; ctx.fillText("Not enough points for this range", 10, h/2); return; }
-
-  const min = Math.min(...series), max = Math.max(...series);
-  const pad = 18;
-  const xStep = (w-2*pad)/(series.length-1);
-  const yFor = v => h-pad - ( (v-min)/((max-min)||1) )*(h-2*pad);
-
-  const style = getComputedStyle(document.body);
-  const rising = series[series.length-1] >= series[0];
-  ctx.strokeStyle = rising ? style.getPropertyValue('--green') : style.getPropertyValue('--red');
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  series.forEach((v,i)=>{ const x=pad+i*xStep, y=yFor(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-  ctx.stroke();
-
-  // fill
-  const grad = ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0, rising ? "rgba(53,201,140,.18)" : "rgba(239,95,114,.18)");
-  grad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.lineTo(pad+(series.length-1)*xStep, h-pad); ctx.lineTo(pad, h-pad); ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-
-  ctx.fillStyle = style.getPropertyValue('--text-muted'); ctx.font = "10px monospace";
-  ctx.fillText(min.toFixed(2), 4, h-4);
-  ctx.fillText(max.toFixed(2), 4, 12);
-}
-
-/* ---------- import ---------- */
-let pendingImport = null;
-function handleImportFile(file){
-  const reader = new FileReader();
-  reader.onload = e=>{
-    let parsed;
-    try{
-      if(file.name.toLowerCase().endsWith(".json")){
-        parsed = normalizeJson(JSON.parse(e.target.result));
-      } else {
-        const rows = parseCSV(e.target.result);
-        parsed = normalizeCsvRows(rows);
+      // ---------- Downloads ----------
+      var dlStatusEl = document.getElementById("dlStatus");
+      function setDlStatus(msg) {
+        dlStatusEl.textContent = msg;
+        if (msg) setTimeout(function () { dlStatusEl.textContent = ""; }, 5000);
       }
-    } catch(err){
-      alert("Could not parse file: " + err.message);
-      return;
-    }
-    pendingImport = parsed;
-    showMappingPreview(parsed, file.name);
-  };
-  reader.readAsText(file);
-}
+      function saveBlob(blob, name) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      }
 
-function showMappingPreview(parsed, filename){
-  document.getElementById("mappingPreview").classList.remove("hidden");
-  const mapTable = document.getElementById("mapTable");
-  const mappedFields = Object.keys(parsed.mapping);
-  const unmapped = CANONICAL_FIELDS.filter(f=> !mappedFields.includes(f) && !["receivablesGrowth","equityGrowth","debtGrowth","marginTrend","sharesOutstandingGrowth","auditorNote","nonRecurringIncomeFlag","historicalPe","sectorAvgPe"].includes(f));
-  mapTable.innerHTML = mappedFields.map(f=>`<tr><td class="mono">${f}</td><td>← "${parsed.mapping[f]}"</td></tr>`).join("");
-  let missingData=0;
-  parsed.stocks.forEach(s=> CANONICAL_FIELDS.forEach(f=>{ if(s[f]===null) missingData++; }));
-  document.getElementById("importSummary").textContent =
-    `${filename}: ${parsed.stocks.length} stocks detected, ${mappedFields.length}/${CANONICAL_FIELDS.length} fields mapped. Unmapped fields will show as N/A.`;
-  document.getElementById("confirmImport").classList.remove("hidden");
-  document.getElementById("confirmCount").textContent = "(" + parsed.stocks.length + ")";
-}
+      // Full standalone tool file (this page itself — live scan included, saved snapshot works offline)
+      document.getElementById("dlTool").addEventListener("click", function () {
+        var html = "<!doctype html>\n" + document.documentElement.outerHTML;
+        saveBlob(new Blob([html], { type: "text/html;charset=utf-8" }), "PSX-EMA-Screener.html");
+        setDlStatus("Screener tool download ho gaya — PSX-EMA-Screener.html");
+      });
 
-function commitImport(){
-  if(!pendingImport) return;
-  State.stocks = pendingImport.stocks;
-  State.dataSource = "File import";
-  State.lastUpdated = new Date();
-  recomputeDerived();
-  refreshStatusBar();
-  populateSectorFilter();
-  closeImportModal();
-  setView(State.view);
-}
+      // CSV of the currently displayed lists (opens in Excel)
+      document.getElementById("dlCsv").addEventListener("click", function () {
+        var lines = ["Signal,Symbol,Price (Rs),Change %,Volume,EMA 9,EMA 26,Scan,Timeframe"];
+        var tag = (CUR.live ? "Live " : "Saved ") + CUR.fileDate;
+        CUR.buy.forEach(function (x) { lines.push(["BUY", x.s, x.p.toFixed(2), x.c.toFixed(2), x.v, x.e9.toFixed(2), x.e26.toFixed(2), tag, TF_LABEL[CUR.tf]].join(",")); });
+        CUR.sell.forEach(function (x) { lines.push(["SELL", x.s, x.p.toFixed(2), x.c.toFixed(2), x.v, x.e9.toFixed(2), x.e26.toFixed(2), tag, TF_LABEL[CUR.tf]].join(",")); });
+        saveBlob(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }), "PSX-EMA-Scan-" + CUR.fileDate + "-" + CUR.tf + ".csv");
+        setDlStatus("CSV file download ho gayi — Excel mein khul jayegi");
+      });
 
-function refreshStatusBar(){
-  const has = State.stocks.length>0;
-  document.getElementById("dataDot").className = "dot " + (has?"ok":"");
-  document.getElementById("dataStatusText").textContent = has ? "Data loaded" : "No data loaded";
-  document.getElementById("dataSourceLabel").textContent = State.dataSource || "—";
-  document.getElementById("dataCountLabel").textContent = State.stocks.length;
-  document.getElementById("dataUpdatedLabel").textContent = State.lastUpdated ? State.lastUpdated.toLocaleString() : "—";
-  let missing=0;
-  State.stocks.forEach(s=> CANONICAL_FIELDS.forEach(f=>{ if(s[f]===null) missing++; }));
-  document.getElementById("dataMissingLabel").textContent = missing;
-}
-
-function populateSectorFilter(){
-  const sel = document.getElementById("sectorFilter");
-  const sectors = Array.from(new Set(State.stocks.map(s=>s.sector).filter(Boolean))).sort();
-  sel.innerHTML = '<option value="">All Sectors</option>' + sectors.map(s=>`<option value="${s}">${s}</option>`).join("");
-}
-
-/* ---------- CSV export ---------- */
-function exportCsv(){
-  const list = applyPipeline();
-  if(!list.length){ alert("No rows to export."); return; }
-  const cols = DEFAULT_COLUMNS.filter(c=> State.visibleCols.includes(c.key) && c.key!=="rank");
-  const header = ["Rank", ...cols.map(c=>c.label)];
-  const lines = [header.join(",")];
-  list.forEach((s,i)=>{
-    const vals = cols.map(c=>{
-      if(c.key==="cheetahScore") return s._score.total!==null? s._score.total.toFixed(1) : "N/A";
-      if(c.key==="trend") return (TECH_CONDITIONS.aboveDma50(s)&&TECH_CONDITIONS.aboveDma200(s))?"Uptrend":"Weak/Down";
-      if(c.key==="risk") return (s._flags?s._flags.length:0);
-      const v = s[c.key];
-      return v===null||v===undefined ? "N/A" : v;
-    });
-    lines.push([i+1, ...vals].map(v=> typeof v==="string" && v.includes(",") ? `"${v}"` : v).join(","));
-  });
-  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href=url; a.download = "psx-screener-export.csv"; a.click();
-  URL.revokeObjectURL(url);
-}
-
-/* ---------- columns panel ---------- */
-function renderColumnPanel(){
-  const el = document.getElementById("colList");
-  el.innerHTML = DEFAULT_COLUMNS.map(c=>`
-    <div class="toggle-row"><input type="checkbox" id="col_${c.key}" ${State.visibleCols.includes(c.key)?"checked":""} ${c.key==="symbol"?"disabled":""}>
-    <label for="col_${c.key}">${c.label}</label></div>`).join("");
-  el.querySelectorAll("input").forEach(cb=> cb.addEventListener("change", ()=>{
-    const key = cb.id.replace("col_","");
-    if(cb.checked){ if(!State.visibleCols.includes(key)) State.visibleCols.push(key); }
-    else { State.visibleCols = State.visibleCols.filter(k=>k!==key); }
-    renderTable();
-  }));
-}
-
-/* ============================================================
-   EVENT WIRING
-   ============================================================ */
-document.getElementById("navtabs").addEventListener("click", e=>{
-  const t = e.target.closest(".navtab"); if(t) setView(t.dataset.view);
-});
-document.getElementById("themeToggle").addEventListener("click", ()=>{
-  const html = document.documentElement;
-  html.setAttribute("data-theme", html.getAttribute("data-theme")==="dark"?"light":"dark");
-});
-document.getElementById("searchInput").addEventListener("input", e=>{ State.search = e.target.value; State.page=1; renderTable(); });
-document.getElementById("sectorFilter").addEventListener("change", e=>{ State.sector = e.target.value; State.page=1; renderTable(); });
-document.getElementById("btnResetFilters").addEventListener("click", ()=>{
-  State.ranges={}; State.toggles={}; State.sector=""; State.search=""; document.getElementById("searchInput").value=""; document.getElementById("sectorFilter").value="";
-  renderTable();
-});
-document.getElementById("prevPage").addEventListener("click", ()=>{ if(State.page>1){State.page--; renderTable();} });
-document.getElementById("nextPage").addEventListener("click", ()=>{ State.page++; renderTable(); });
-document.getElementById("pageSizeSel").addEventListener("change", e=>{ State.pageSize = parseInt(e.target.value); State.page=1; renderTable(); });
-document.getElementById("btnExportCsv").addEventListener("click", exportCsv);
-
-document.getElementById("btnOpenFilters").addEventListener("click", ()=>{
-  renderFilterPanel();
-  document.getElementById("filterOverlay").classList.remove("hidden");
-  document.getElementById("filterPanel").classList.remove("hidden");
-});
-function closeFilterPanel(){ document.getElementById("filterOverlay").classList.add("hidden"); document.getElementById("filterPanel").classList.add("hidden"); }
-document.getElementById("closeFilters").addEventListener("click", closeFilterPanel);
-document.getElementById("filterOverlay").addEventListener("click", closeFilterPanel);
-document.getElementById("btnApplyFilters").addEventListener("click", ()=>{ closeFilterPanel(); State.page=1; renderTable(); });
-document.getElementById("btnClearFilters").addEventListener("click", ()=>{ State.ranges={}; State.toggles={}; renderFilterPanel(); });
-document.getElementById("btnSaveScreen").addEventListener("click", ()=>{
-  const name = document.getElementById("saveScreenName").value.trim();
-  if(!name) return;
-  State.savedScreens.push({name, ranges: JSON.parse(JSON.stringify(State.ranges)), toggles: JSON.parse(JSON.stringify(State.toggles))});
-  document.getElementById("saveScreenName").value="";
-  renderFilterPanel();
-});
-
-document.getElementById("btnColumns").addEventListener("click", ()=>{
-  renderColumnPanel();
-  document.getElementById("colOverlay").classList.remove("hidden");
-  document.getElementById("colPanel").classList.remove("hidden");
-});
-function closeColPanel(){ document.getElementById("colOverlay").classList.add("hidden"); document.getElementById("colPanel").classList.add("hidden"); }
-document.getElementById("closeCols").addEventListener("click", closeColPanel);
-document.getElementById("colOverlay").addEventListener("click", closeColPanel);
-
-function openImportModal(){ document.getElementById("importModal").classList.remove("hidden"); }
-function closeImportModal(){
-  document.getElementById("importModal").classList.add("hidden");
-  document.getElementById("mappingPreview").classList.add("hidden");
-  document.getElementById("confirmImport").classList.add("hidden");
-  document.getElementById("fileInput").value = "";
-  pendingImport = null;
-}
-document.getElementById("btnImport").addEventListener("click", openImportModal);
-document.getElementById("btnImportEmpty").addEventListener("click", openImportModal);
-document.getElementById("closeImport").addEventListener("click", closeImportModal);
-document.getElementById("cancelImport").addEventListener("click", closeImportModal);
-document.getElementById("confirmImport").addEventListener("click", commitImport);
-document.getElementById("dropzone").addEventListener("click", ()=> document.getElementById("fileInput").click());
-document.getElementById("fileInput").addEventListener("change", e=>{ if(e.target.files[0]) handleImportFile(e.target.files[0]); });
-document.getElementById("dropzone").addEventListener("dragover", e=>{ e.preventDefault(); });
-document.getElementById("dropzone").addEventListener("drop", e=>{ e.preventDefault(); if(e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]); });
-
-document.getElementById("closeDetail").addEventListener("click", ()=> document.getElementById("detailModal").classList.add("hidden"));
-document.getElementById("detailModal").addEventListener("click", e=>{ if(e.target.id==="detailModal") document.getElementById("detailModal").classList.add("hidden"); });
-
-document.getElementById("btnLiveFetch").addEventListener("click", async ()=>{
-  if(!DataConfig.isLiveConfigured()){ alert("No live API/proxy URL configured yet. Add one under Settings, or use CSV/JSON import."); setView("settings"); return; }
-  try{
-    const data = await (DataConfig.psxBaseUrl ? DataFetching.fetchLivePsx() : DataFetching.fetchLiveScs());
-    const parsed = normalizeJson(data);
-    State.stocks = parsed.stocks; State.dataSource = "Live API"; State.lastUpdated = new Date();
-    recomputeDerived(); refreshStatusBar(); populateSectorFilter(); setView(State.view);
-  } catch(err){ alert("Live fetch failed: " + err.message); }
-});
-document.getElementById("btnSaveCfg").addEventListener("click", ()=>{
-  DataConfig.psxBaseUrl = document.getElementById("cfgPsxUrl").value.trim();
-  DataConfig.scsBaseUrl = document.getElementById("cfgScsUrl").value.trim();
-  alert("Configuration saved for this session.");
-});
-
-/* ---------- init ---------- */
-refreshStatusBar();
-setView("dashboard");
-</script>
-</body>
+      // Copy WhatsApp-ready text list of the currently displayed scan
+      document.getElementById("cpList").addEventListener("click", function () {
+        function block(title, list) {
+          var out = [title];
+          if (!list.length) out.push("(koi cross nahi)");
+          list.forEach(function (x) {
+            out.push(x.s + "  Rs " + fmtPrice(x.p) + "  (" + fmtChg(x.c) + ")  Vol " + fmtNum(x.v));
+          });
+          return out.join("\n");
+        }
+        var text = "PSX EMA Screener — " + CUR.headline + (CUR.prov ? " (provisional)" : "") + "\n\n" +
+          block("BUY CROSS (" + CUR.buy.length + ") — EMA 9 upar cross:", CUR.buy) + "\n\n" +
+          block("SELL CROSS (" + CUR.sell.length + ") — EMA 9 neechay cross:", CUR.sell) +
+          "\n\nSignals hain, recommendation nahi.";
+        function done() { setDlStatus("List copy ho gayi — WhatsApp mein paste kar dein"); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+        } else { fallbackCopy(text); done(); }
+      });
+      function fallbackCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        ta.remove();
+      }
+    </script>
+  </body>
 </html>
