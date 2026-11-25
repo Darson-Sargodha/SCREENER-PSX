@@ -1828,7 +1828,7 @@
           if (x === null || x === undefined) continue;
           var y = advCandle.priceToCoordinate(sg.type === "BUY" ? bar.low : bar.high);
           if (y === null || y === undefined) continue;
-          html += '<span class="adv-pill ' + (sg.type === "BUY" ? "buy" : "sell") + '" style="left:' + x.toFixed(1) + "px;top:" + y.toFixed(1) + 'px">' + sg.type + "</span>";
+          html += '<span class="adv-pill ' + (sg.type === "BUY" ? "buy" : "sell") + '" style="left:' + x.toFixed(1) + "px;top:" + y.toFixed(1) + 'px">' + (sg.type === "BUY" ? "▲ BUY" : "▼ SELL") + "</span>";
         }
         advOverlayEl.innerHTML = html;
       }
@@ -1872,6 +1872,7 @@
           width: wrap.clientWidth,
           height: wrap.clientHeight,
           layout: {
+            attributionLogo: false,
             background: { type: "solid", color: "#131722" },
             textColor: "#c9d6e8",
             fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
@@ -1905,14 +1906,22 @@
         advFast.setData(fastData);
         advSlow = advChart.addLineSeries({ color: "#f472b6", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
         advSlow.setData(slowData);
-        advChart.timeScale().fitContent();
         // DOM overlay for the signal pills, layered above the chart canvas;
         // repositioned whenever the visible range changes (scroll / zoom).
         advOverlayEl = document.createElement("div");
         advOverlayEl.className = "adv-pill-layer";
         wrap.appendChild(advOverlayEl);
+        // Subscribe BEFORE fitContent(): the initial range change then
+        // re-renders the pills once the layout is in place, so they land on
+        // their bars on the very first paint instead of only after a pan.
         advChart.timeScale().subscribeVisibleLogicalRangeChange(advRenderPills);
+        advChart.timeScale().fitContent();
         advApplyToggle();
+        // Deferred first renders: timeToCoordinate / priceToCoordinate only
+        // return settled positions after the chart layout has been applied,
+        // so render again on the next frame and once more shortly after.
+        requestAnimationFrame(advRenderPills);
+        setTimeout(advRenderPills, 150);
         // Legend: symbol, last close, current Fast / Slow values
         var lastBar = bars[bars.length - 1];
         var fLast = fast[fast.length - 1], sLast = slow[slow.length - 1];
