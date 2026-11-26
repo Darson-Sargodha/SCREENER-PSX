@@ -1481,6 +1481,48 @@
       runScan();
       }
 
+      // ---------- Firebase connection (Scanify data store) ----------
+      // Connects to the afrasiab-portfolio Firebase project so setups can
+      // be saved and tracked (the Tool Performance page reads from here).
+      // Fully guarded: if the Firebase SDK fails to load (offline, CDN
+      // blocked) the site keeps working exactly as before — the live scan,
+      // charts and volume monitor do not depend on Firebase. No visible
+      // UI change; connection status is only in the console + window.
+      // Security: the web apiKey below is a public client key by design
+      // (Firebase web config); real protection is the Firestore rules —
+      // scanify collections are public-read, no client write. Writes come
+      // only from the trusted daily writer (service account, Admin SDK).
+      (function () {
+        window.__scanifyFb = { ready: false, error: null };
+        try {
+          if (typeof firebase === "undefined" || !firebase.firestore) { window.__scanifyFb.error = "sdk-missing"; return; }
+          if (!firebase.apps.length) {
+            firebase.initializeApp({
+              apiKey: "AIzaSyDQqv0olDCDCvVv8zq967B57l7vZNbwbhs",
+              authDomain: "afrasiab-portfolio.firebaseapp.com",
+              databaseURL: "https://afrasiab-portfolio-default-rtdb.firebaseio.com",
+              projectId: "afrasiab-portfolio",
+              storageBucket: "afrasiab-portfolio.firebasestorage.app",
+              messagingSenderId: "978644349670",
+              appId: "1:978644349670:web:17bf124ca2490013b74127",
+              measurementId: "G-B0PQ4G05QJ"
+            });
+          }
+          var db = firebase.firestore();
+          window.__scanifyDb = db;
+          window.__scanifyFb.ready = true;
+          // Diagnostic read only: confirms the connection + public-read
+          // rules work. Missing doc = no data saved yet.
+          db.collection("scanify_meta").doc("status").get().then(function (doc) {
+            window.__scanifyFb.statusDoc = doc.exists ? doc.data() : null;
+          }).catch(function () {
+            window.__scanifyFb.error = "read-failed";
+          });
+        } catch (e) {
+          window.__scanifyFb.error = "init-failed";
+        }
+      })();
+
       // ---------- Heading + text reveal: smooth once-only entrance ----------
       // Headings (and the hero text group) start hidden only when JavaScript
       // is running (html.js is added by the tiny script in <head> before
