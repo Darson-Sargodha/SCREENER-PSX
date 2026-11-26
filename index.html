@@ -269,7 +269,7 @@
       .manual p.sub { margin:0 0 14px; color:var(--ink-2); font-size:14.5px; max-width:66ch; }
       .manual-row { display:flex; flex-wrap:wrap; gap:10px; }
       .manual-row .field {
-        flex:1 1 220px; display:flex; align-items:center; gap:8px;
+        flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:8px;
         background:var(--bg); border:1px solid var(--line); border-radius:11px; padding:0 12px;
       }
       .manual-row .field:focus-within { border-color: var(--buy); box-shadow: 0 0 0 3px var(--buy-soft); }
@@ -345,6 +345,16 @@
       @media (max-width: 720px) {
         .adv-wrap { height:300px; }
         .adv-toggle { margin-left:0; }
+        /* Keep the whole timeframe row inside the card on phones: the five
+           buttons share the row equally and may shrink, instead of the group
+           keeping its natural width and pushing the page sideways. */
+        .adv-tf-group { flex:1 1 auto; min-width:0; max-width:100%; gap:2px; }
+        .adv-tf-btn { flex:1 1 0; min-width:0; padding:7px 3px; font-size:13px; white-space:nowrap; }
+      }
+      @media (max-width: 340px) {
+        /* Very narrow phones: wrap 3 + 2 like the screener's timeframe row. */
+        .adv-tf-group { flex-wrap:wrap; }
+        .adv-tf-btn { flex:1 1 30%; }
       }
 
       /* ---------- Volume Monitor ---------- */
@@ -1450,23 +1460,16 @@
         document.getElementById("dTP2Sub").textContent = "Reward Rs " + fmtPrice(Math.abs(lv.tp2 - lv.entry)) + " · R:R 1:3";
         drawLevelLines();
       }
-      // ---------- Price chart (Lightweight Charts + baked OHLC, live refresh) ----------
+      // ---------- Price chart (Lightweight Charts + live SuperX candles) ----------
       // PSX market data is not licensed for TradingView's embeddable widgets, so the
       // chart is drawn with TradingView's open-source Lightweight Charts library
       // instead; the "Open on TradingView" button links out to the full chart on
-      // tradingview.com, where every PSX symbol works. Candles load FIRST from the
-      // baked data files on this same site (data/<tf>/<SYM>.json), so the chart
-      // never depends on an outside service; a live Yahoo Finance fetch through a
-      // proxy then runs in the background and only replaces the candles when it
-      // returns newer bars.
+      // tradingview.com, where every PSX symbol works. Candles are fetched LIVE
+      // from SuperX by the browser — the same source Advance Charting below uses —
+      // so the chart is always current with no saved-data refresh behind it. The
+      // baked data files on this same site (data/<tf>/<SYM>.json) are kept only
+      // as a fallback for when SuperX cannot be reached.
       var lwChart = null, lwSeries = null, lwLines = [], chartReq = 0, lwLibPromise = null, chartBars = null, lwRO = null;
-      var YAHOO_TF = {
-        "1D":  { range: "6mo", interval: "1d" },
-        "1W":  { range: "2y",  interval: "1wk" },
-        "4H":  { range: "1mo", interval: "60m", agg: 4 },
-        "1H":  { range: "1mo", interval: "60m" },
-        "15m": { range: "5d",  interval: "15m" }
-      };
       var BAKED_TF = {
         "1D":  { dir: "daily" },
         "1W":  { dir: "weekly" },
@@ -1518,6 +1521,35 @@
             return dedup;
           });
       }
+      // Live candles from SuperX — the same endpoints Advance Charting fetches
+      // and the same parsers it defines below (advParseCsv / advToWeekly /
+      // advParseCandles / advTo4H), so there is one shared copy of the SuperX
+      // fetch logic on this page. Daily / Weekly come from the end-of-day CSV;
+      // 15m / 1H / 4H come from the candle API, with 4H grouped from 1-hour
+      // bars. Only the most recent stretch is kept for drawing — the same
+      // display window Advance Charting renders (500 bars, 250 for Weekly).
+      function fetchSuperXCandles(sym) {
+        var limit = (curTF === "1W") ? 250 : 500;
+        if (curTF === "15m" || curTF === "1H" || curTF === "4H") {
+          var interval = (curTF === "15m") ? "15m" : "1h";
+          return fetchWithTimeout("https://api.superx.pk/candles?symbol=" + encodeURIComponent(sym) + "&range=1M&interval=" + interval, 15000)
+            .then(function (r) { if (!r.ok) throw new Error("SuperX candles request failed"); return r.json(); })
+            .then(function (data) {
+              var bars = advParseCandles(data);
+              if (curTF === "4H") bars = advTo4H(bars);
+              if (!bars.length) throw new Error("no intraday bars from SuperX");
+              return bars.slice(-limit);
+            });
+        }
+        return fetchWithTimeout("https://superx.pk/chart/" + encodeURIComponent(sym) + ".csv", 10000)
+          .then(function (r) { if (!r.ok) throw new Error("SuperX request failed"); return r.text(); })
+          .then(function (text) {
+            var bars = advParseCsv(text);
+            if (curTF === "1W") bars = advToWeekly(bars);
+            if (!bars.length) throw new Error("no rows in SuperX data");
+            return bars.slice(-limit);
+          });
+      }
       function loadLwLib() {
         if (window.LightweightCharts) return Promise.resolve();
         if (lwLibPromise) return lwLibPromise;
@@ -1531,28 +1563,6 @@
           document.head.appendChild(s);
         });
         return lwLibPromise;
-      }
-      function fetchCandles(sym) {
-        var cfg = YAHOO_TF[curTF] || YAHOO_TF["1D"];
-        var yUrl = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym + ".KA")
-          + "?range=" + cfg.range + "&interval=" + cfg.interval;
-        return fetchWithTimeout("https://api.allorigins.win/get?url=" + encodeURIComponent(yUrl), 8000)
-          .then(function (r) { if (!r.ok) throw new Error("chart data request failed"); return r.json(); })
-          .then(function (wrapped) {
-            var data = JSON.parse(wrapped.contents);
-            var res = data && data.chart && data.chart.result && data.chart.result[0];
-            if (!res || !res.timestamp) return [];
-            var q = res.indicators && res.indicators.quote && res.indicators.quote[0];
-            if (!q) return [];
-            var bars = [];
-            for (var i = 0; i < res.timestamp.length; i++) {
-              var o = q.open[i], h = q.high[i], l = q.low[i], c = q.close[i];
-              if (o == null || h == null || l == null || c == null) continue;
-              bars.push({ time: res.timestamp[i], open: o, high: h, low: l, close: c, volume: (q.volume && q.volume[i]) || 0 });
-            }
-            if (cfg.agg) bars = aggregateBars(bars, cfg.agg);
-            return bars;
-          });
       }
       function destroyChart() {
         if (lwRO) { try { lwRO.disconnect(); } catch (e) { /* observer already gone */ } lwRO = null; }
@@ -1637,37 +1647,21 @@
         wrap.innerHTML = '<div class="chart-msg"><div>Loading the ' + sym + " chart (" + TF_LABEL[curTF] + ")&hellip;</div></div>";
         loadLwLib()
           .then(function () {
-            // Baked same-origin data first: the chart must draw even when the
-            // live proxy is down. A missing baked file just falls through.
-            return fetchBakedCandles(sym).catch(function () { return []; });
+            // Live SuperX candles first, fetched fresh by the browser — the
+            // chart never waits on saved data. The baked same-origin files
+            // are only the fallback for when SuperX cannot be reached; a
+            // missing baked file just falls through to the message below.
+            return fetchSuperXCandles(sym).catch(function () {
+              return fetchBakedCandles(sym);
+            });
           })
-          .then(function (baked) {
+          .then(function (bars) {
             if (req !== chartReq) return; // window closed or another stock opened meanwhile
-            if (baked && baked.length) {
-              drawChart(baked);
-              // Background live refresh: swap in the proxy bars only when they
-              // reach past the newest baked bar; any failure leaves the baked
-              // chart exactly as drawn.
-              fetchCandles(sym).then(function (live) {
-                if (req !== chartReq || !lwSeries || !chartBars) return;
-                if (live && live.length && live[live.length - 1].time > chartBars[chartBars.length - 1].time) {
-                  chartBars = live;
-                  lwSeries.setData(live.map(function (b) {
-                    return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
-                  }));
-                }
-              }).catch(function () { /* baked chart stays */ });
+            if (!bars || !bars.length) {
+              showChartMsg("Chart data isn&rsquo;t available for <strong>" + sym + "</strong> in the chart feed right now. You can still view this stock on TradingView with the button below.");
               return;
             }
-            // No baked file for this symbol: fall back to the live feed alone.
-            return fetchCandles(sym).then(function (live) {
-              if (req !== chartReq) return;
-              if (!live || !live.length) {
-                showChartMsg("Chart data isn&rsquo;t available for <strong>" + sym + "</strong> in the chart feed right now. You can still view this stock on TradingView with the button below.");
-                return;
-              }
-              drawChart(live);
-            });
+            drawChart(bars);
           })
           .catch(function () {
             if (req !== chartReq) return;
