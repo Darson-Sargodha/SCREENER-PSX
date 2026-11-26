@@ -17,6 +17,7 @@
       // from a clean blank instead of flashing the finished logo first. Without
       // JavaScript this class is never added and the logo simply shows.
       document.documentElement.classList.add("logo-armed");
+      document.documentElement.classList.add("js");
     </script>
   </head>
   <body>
@@ -43,13 +44,13 @@
       <div class="scan-head">
         <div class="hero-flex">
           <div class="hero-main">
-            <div class="hero-badge"><span class="pulse-dot"></span> Scanify &middot; Live PSX Scanner</div>
-            <h1>Fresh BUY &amp; SELL setups, <span class="thin">across the entire PSX.</span></h1>
-            <p class="scan-meta">
+            <div class="hero-badge anim" style="--d:.05s"><span class="pulse-dot"></span> Scanify &middot; Live PSX Scanner</div>
+            <h1 class="anim" style="--d:.15s">Fresh BUY &amp; SELL setups, <span class="thin">across the entire PSX.</span></h1>
+            <p class="scan-meta anim" style="--d:.28s">
               Select a timeframe and run a scan &mdash; Scanify screens every PSX-listed stock on TradingView and
               lists the stocks currently showing a <strong>BUY</strong> setup or a <strong>SELL</strong> setup.
             </p>
-            <div class="chips">
+            <div class="chips anim" style="--d:.4s">
               <span class="chip"><span class="dot"></span> Data source: TradingView &mdash; Live</span>
               <span class="chip">Daily baseline: 25 Nov 2026</span>
               <span class="chip">Full PSX universe &mdash; paginated scan</span>
@@ -111,7 +112,7 @@
 
       <section class="signal" id="buySection">
         <div class="sig-head">
-          <h2>BUY Setups</h2>
+          <h2 class="anim">BUY Setups</h2>
           <span class="count-badge buy-badge mono" id="buyCount">21</span>
           <span class="rule">New BUY setups found in this scan</span>
         </div>
@@ -129,7 +130,7 @@
 
       <section class="signal" id="sellSection">
         <div class="sig-head">
-          <h2>SELL Setups</h2>
+          <h2 class="anim">SELL Setups</h2>
           <span class="count-badge sell-badge mono" id="sellCount">10</span>
           <span class="rule">New SELL setups found in this scan</span>
         </div>
@@ -147,7 +148,7 @@
 
       <div class="notes">
         <div class="note" id="marketOverview">
-          <h3>Overall Market Picture</h3>
+          <h3 class="anim">Overall Market Picture</h3>
           <p id="ovMain">
             In the 25 Nov 2026 baseline of 477 stocks, <b>329 were bullish</b> (fast average above slow average) and
             <b>148 were bearish</b> — the broader market bias was to the upside.
@@ -166,7 +167,7 @@
         </div>
         <p>Data source: TradingView scanner (PSX-listed stocks) · Internet is required for a live scan · Daily baseline: 25 Nov 2026 · Saved snapshot: 25 Nov 2026.</p>
         <div class="disclaimer">
-          <h3>Disclaimer — Please Read Carefully</h3>
+          <h3 class="anim">Disclaimer — Please Read Carefully</h3>
           <p><strong>These are NOT buy signals and NOT sell signals.</strong> The results shown on this page — including any list or label that uses the words “BUY” or “SELL” — are <strong>not</strong> buy signals, sell signals, trading calls, tips, recommendations, or advice to buy, sell, or hold any stock or security. They are only computer-generated technical screening results, shown purely for informational, educational, and research purposes.</p>
           <p>Nothing on this page constitutes investment advice, financial advice, or a solicitation to buy or sell any security, and nothing here should be taken as a guarantee of profit or of any future result. No person should buy or sell any stock solely on the basis of the information shown by this tool.</p>
           <p>Trading and investing in the Pakistan Stock Exchange involves substantial risk, including the possible loss of your entire capital. Market data may be delayed, incomplete, or inaccurate, and past performance is not a guarantee of future results. Always conduct your own independent research and, where appropriate, consult a licensed financial advisor before making any investment decision.</p>

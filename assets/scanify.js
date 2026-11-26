@@ -1480,3 +1480,37 @@
       render();
       runScan();
       }
+
+      // ---------- Heading + text reveal: smooth once-only entrance ----------
+      // Headings (and the hero text group) start hidden only when JavaScript
+      // is running (html.js is added by the tiny script in <head> before
+      // first paint, so there is no flash). The CSS deliberately does NOT
+      // gate this on prefers-reduced-motion: the user's desktop has animation
+      // effects off, and the entrance must still play there (same lesson as
+      // the hero logo entrance fix). IntersectionObserver adds .in as each
+      // heading scrolls into view — or at once for the ones already on
+      // screen — so the entrance plays once per page load and the headings
+      // stay visible.
+      (function () {
+        var els = document.querySelectorAll(".anim");
+        if (!els.length) { return; }
+        function reveal(el) { el.classList.add("in"); }
+        if (!("IntersectionObserver" in window)) {
+          Array.prototype.forEach.call(els, reveal);
+          return;
+        }
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { reveal(en.target); io.unobserve(en.target); }
+          });
+        }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+        Array.prototype.forEach.call(els, function (el) { io.observe(el); });
+        // Safety net: never leave a heading invisible. A jump-scroll (End
+        // key, Page Down, anchor jump) can skip past a heading without it
+        // ever intersecting the viewport, so reveal everything a few
+        // seconds after load no matter what. Headings the observer already
+        // revealed are unaffected (adding .in twice is harmless).
+        setTimeout(function () {
+          Array.prototype.forEach.call(els, reveal);
+        }, 4000);
+      })();

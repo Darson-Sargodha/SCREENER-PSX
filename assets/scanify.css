@@ -66,7 +66,7 @@
       }
       ::selection { background: var(--buy-soft); }
       .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
-      .wrap { max-width: 1080px; margin: 0 auto; padding: 22px 16px 56px; }
+      .wrap { width: 100%; max-width: 1600px; margin: 0 auto; padding: 22px clamp(16px, 3vw, 40px) 56px; }
 
       /* ---------- Top bar ---------- */
       .topbar {
@@ -76,7 +76,7 @@
         border-bottom: 1px solid var(--line);
       }
       .topbar-in {
-        max-width: 1080px; margin: 0 auto; padding: 10px 16px;
+        max-width: 1600px; margin: 0 auto; padding: 10px clamp(16px, 3vw, 40px);
         display: flex; align-items: center; gap: 18px;
       }
       .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-width: 0; }
@@ -127,7 +127,7 @@
       .hero-main { flex: 1 1 auto; min-width: 0; }
       .hero-logo {
         position: relative;
-        width: 300px; max-width: 100%; aspect-ratio: 600 / 469; flex: none; align-self: center;
+        width: clamp(240px, 26vw, 360px); max-width: 100%; aspect-ratio: 600 / 469; flex: none; align-self: center;
         /* Fully transparent logo sitting directly on the dark hero — no panel or backdrop.
            The CANIFY wordmark is white in the artwork itself, so it reads clearly as-is;
            only a soft drop-shadow glow lifts it from the background. The glow sits on this
@@ -585,3 +585,30 @@
       .fb-thanks { border: 1px solid var(--buy); background: var(--buy-soft); border-radius: 14px; padding: 18px; margin-top: 16px; }
       .fb-thanks h3 { margin: 0 0 6px; font-size: 18px; }
       .fb-thanks p { margin: 0; font-size: 14.5px; color: var(--ink); }
+
+      /* ---------- Fluid width: fill wide screens, never break ---------- */
+      @media (min-width: 1400px) {
+        .adv-wrap { height: 520px; }
+        .tv-wrap { height: 480px; }
+      }
+
+      /* ---------- Heading + text reveal: smooth, once, on scroll ----------
+         Headings start hidden ONLY when JavaScript runs (html.js is added by
+         the tiny script in <head> before first paint, so there is no flash).
+         The script in scanify.js adds .in as each heading scrolls into view
+         (or at once for the ones already on screen), so the entrance plays
+         once per load and the headings stay visible afterwards. Transform +
+         opacity only, so the animation stays smooth and never shifts the
+         layout. NOTE: these rules are deliberately NOT gated on
+         prefers-reduced-motion — the user's desktop has animation effects
+         off, and the heading entrance must still play there (same lesson as
+         the hero logo entrance fix: a no-preference gate silently disables
+         the animation on his machine). */
+      html.js .anim {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity .7s cubic-bezier(.22, .61, .21, 1) var(--d, 0s),
+                    transform .7s cubic-bezier(.22, .61, .21, 1) var(--d, 0s);
+        will-change: opacity, transform;
+      }
+      html.js .anim.in { opacity: 1; transform: translateY(0); }
