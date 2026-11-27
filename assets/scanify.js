@@ -1313,6 +1313,7 @@
       // for today, clearly labelled stale, until the feed recovers.
       var VOL_SNAP_KEY = "scanify_vol_snap";
       var volSnapStale = null; // asOf string of the snapshot in use, when stale
+      var volSnapTV = false; // true when today's figures come from TradingView, not DPS
       function volSnapSave(asOf, rows) {
         try {
           localStorage.setItem(VOL_SNAP_KEY, JSON.stringify({ asOf: asOf, rows: rows }));
@@ -1352,6 +1353,7 @@
           var map = volSnapToMap(j);
           volSnapCache = map;
           volSnapStale = j.stale ? (j.asOf || "") : null;
+          volSnapTV = false;
           if (!j.stale) volSnapSave(j.asOf || "", j.rows);
           return map;
         }).catch(function (e) { if (timer) clearTimeout(timer); throw e; });
@@ -1364,12 +1366,61 @@
         }).catch(function () {
           // DPS still down: fall back to today's last good snapshot, if any.
           var stale = volSnapReadStale(volTodayStr());
-          if (!stale) throw new Error("DPS snapshot unavailable");
-          var map = volSnapToMap(stale);
-          volSnapCache = map;
-          volSnapStale = stale.asOf || "";
-          return map;
+          if (stale) {
+            var map = volSnapToMap(stale);
+            volSnapCache = map;
+            volSnapStale = stale.asOf || "";
+            volSnapTV = false;
+            return map;
+          }
+          // Nothing saved yet (the feed has never loaded on this device):
+          // use TradingView's scanner instead. Its volume lags the live
+          // market, so the page says so plainly — but it beats empty cards.
+          return volFetchTVSnapshot().then(function (tvMap) {
+            volSnapCache = tvMap;
+            volSnapStale = null;
+            volSnapTV = true;
+            return tvMap;
+          });
         });
+      }
+      // TradingView fallback for today's figures (see volFetchSnapshot).
+      // pakistan/scan returns Value.Traded in PKR (global/scan converts it
+      // to USD), so the value needs no conversion here.
+      function volFetchTVSnapshot() {
+        var body = JSON.stringify({
+          symbols: { query: { types: ["stock"] }, tickers: [] },
+          columns: ["name", "volume", "Value.Traded", "close"],
+          range: [0, 500],
+          markets: ["pakistan"],
+          sort: { sortBy: "volume", sortOrder: "desc" }
+        });
+        var ctrl = ("AbortController" in window) ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+        return fetch("https://scanner.tradingview.com/pakistan/scan", {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: body,
+          signal: ctrl ? ctrl.signal : undefined
+        }).then(function (r) {
+          if (timer) clearTimeout(timer);
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        }).then(function (j) {
+          var rows = (j && j.data) || [];
+          if (rows.length < 100) throw new Error("bad TV snapshot");
+          var map = {};
+          rows.forEach(function (row) {
+            var d = row.d || [];
+            var sym = d[0];
+            if (!sym) return;
+            var v = typeof d[1] === "number" ? d[1] : null;
+            var val = typeof d[2] === "number" ? d[2] : null;
+            var c = typeof d[3] === "number" ? d[3] : null;
+            map[sym] = { s: sym, v: v, val: (val !== null ? val : (v !== null && c !== null ? v * c : null)), c: c };
+          });
+          return map;
+        }).catch(function (e) { if (timer) clearTimeout(timer); throw e; });
       }
       function volRenderTop(map) {
         var rows = Object.keys(map).map(function (k) { return map[k]; })
@@ -1465,7 +1516,7 @@
         display.forEach(function (b, i) {
           var isToday = hasTodayBar && i === display.length - 1;
           var h = Math.max(1.5, (b.volume || 0) / max * 100);
-          html += '<div class="vol-col"><div class="vol-bar' + (isToday ? " today" : "") + '" style="height:' + h.toFixed(1) + '%" title="' + esc(advFmtDate(b.time)) + " — " + fmtNum(b.volume || 0) + " shares" + (b.live ? " (live)" : "") + '"></div></div>';
+          html += '<div class="vol-col" data-date="' + esc(advFmtDate(b.time)) + '" data-vol="' + (b.volume || 0) + '" data-live="' + (b.live ? "1" : "0") + '"><div class="vol-bar' + (isToday ? " today" : "") + '" style="height:' + h.toFixed(1) + '%"></div></div>';
         });
         plot.innerHTML = html;
         axis.innerHTML = display.map(function (b, i) {
@@ -1480,7 +1531,7 @@
           if (isToday) lab = "Today";
           else if (prevM === null || d.getUTCMonth() !== prevM) lab = d.getUTCDate() + " " + VOL_MONTHS[d.getUTCMonth()];
           else lab = String(d.getUTCDate());
-          return '<div class="vol-lab"><span class="d">' + lab + '</span><span class="v mono">' + fmtVolShort(b.volume || 0) + "</span></div>";
+          return '<div class="vol-lab" data-date="' + esc(advFmtDate(b.time)) + '" data-vol="' + (b.volume || 0) + '" data-live="' + (b.live ? "1" : "0") + '"><span class="d">' + lab + '</span><span class="v mono">' + fmtVolShort(b.volume || 0) + "</span></div>";
         }).join("");
         avgLine.innerHTML = avg30
           ? "30-day average volume: <strong class=\"mono\">" + fmtNum(Math.round(avg30)) + " shares</strong> — averaged over the last 30 completed sessions" + (hasTodayBar ? "; today's session is the last bar above." : ".")
@@ -1506,6 +1557,7 @@
           if (snap) volRenderTop(snap);
           volRender(sym, bars, snap ? snap[sym] : null);
           if (snap && volSnapStale) volSetLive("DPS feed is down — showing last good data from " + volSnapStale.slice(11, 16) + " PKT. Retrying…", false);
+          else if (snap && volSnapTV) volSetLive("DPS live feed is unavailable — showing TradingView figures (may lag behind the live market). Retrying…", false);
           if (!bars && !snap) {
             volSetStatus("Volume data for " + sym + " could not be loaded — please check your internet connection and try again.", "err");
           } else if (!bars) {
@@ -1564,6 +1616,7 @@
           volRenderTop(snap);
           volRender(volSym, volLastBars, snap[volSym]);
           if (volSnapStale) volSetLive("DPS feed is down — showing last good data from " + volSnapStale.slice(11, 16) + " PKT. Retrying…", false);
+          else if (volSnapTV) volSetLive("DPS live feed is unavailable — showing TradingView figures (may lag behind the live market). Retrying…", false);
           else volSetLive("Live · updated " + volPktTime(new Date()) + " PKT", true);
         }).catch(function () {
           volSetLive("Live update failed — will retry in 30 seconds.", false);
@@ -1572,6 +1625,32 @@
       if (document.getElementById("volBtn")) {
       document.getElementById("volBtn").addEventListener("click", volSearch);
       document.getElementById("volInput").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); volSearch(); } });
+      // Hover tooltip: hovering a bar (or its date/volume label) shows that
+      // session's exact date and volume next to the cursor.
+      var volTip = document.getElementById("volTip");
+      function volShowTip(e) {
+        if (!volTip) return;
+        var t = e.target && e.target.closest ? e.target.closest("[data-vol]") : null;
+        if (!t) return; // over a gap between columns: keep the last tooltip
+        var date = t.getAttribute("data-date") || "";
+        var vol = parseInt(t.getAttribute("data-vol") || "0", 10) || 0;
+        var live = t.getAttribute("data-live") === "1";
+        volTip.innerHTML = "<strong>" + esc(date) + "</strong><br>Volume: <strong class=\"mono\">" + fmtNum(vol) + "</strong> shares" + (live ? " (live)" : "");
+        volTip.style.display = "block";
+        var x = e.clientX + 14, y = e.clientY + 14;
+        var r = volTip.getBoundingClientRect();
+        if (x + r.width > window.innerWidth - 8) x = e.clientX - r.width - 14;
+        if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - 14;
+        if (x < 8) x = 8;
+        if (y < 8) y = 8;
+        volTip.style.left = x + "px";
+        volTip.style.top = y + "px";
+      }
+      function volHideTip() { if (volTip) volTip.style.display = "none"; }
+      var volPlotEl = document.getElementById("volPlot");
+      var volAxisEl = document.getElementById("volAxis");
+      if (volPlotEl) { volPlotEl.addEventListener("mousemove", volShowTip); volPlotEl.addEventListener("mouseleave", volHideTip); }
+      if (volAxisEl) { volAxisEl.addEventListener("mousemove", volShowTip); volAxisEl.addEventListener("mouseleave", volHideTip); }
       // Default stock: OGDC loads with the page, like Advance Charting
       volLoad("OGDC");
       // Live updates every 30s while the market is open (see volRefreshTick).

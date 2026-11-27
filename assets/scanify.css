@@ -363,6 +363,8 @@
       .vol-lab { flex: 1 1 0; text-align: center; min-width: 0; }
       .vol-lab .d { display: block; font-size: 12px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
       .vol-lab .v { display: block; font-size: 12.5px; margin-top: 1px; white-space: nowrap; }
+      .vol-tip { position: fixed; z-index: 30; display: none; pointer-events: none; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; font-size: 13px; line-height: 1.5; box-shadow: 0 8px 22px rgba(0, 0, 0, .28); max-width: 250px; }
+      .vol-tip .mono { font-family: "IBM Plex Mono", monospace; }
       .vol-avg-line { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
       .vol-avg-line strong { color: var(--ink); }
       .vol-live { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: 13px; font-weight: 600; color: var(--ink-2); }
