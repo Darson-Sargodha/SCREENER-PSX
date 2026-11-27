@@ -1885,3 +1885,30 @@
           Array.prototype.forEach.call(els, reveal);
         }, 4000);
       })();
+
+      // ---------- Home page 3D: hero stage tilt + feature-card tilt ----------
+      // Runs only on the home page (home3d exists). The hero stage tilts
+      // toward the cursor; each feature card tilts on hover. Purely visual.
+      (function () {
+        var stage = document.getElementById("home3dScene");
+        var wrap = document.getElementById("home3d");
+        if (stage && wrap) {
+          wrap.addEventListener("mousemove", function (e) {
+            var r = wrap.getBoundingClientRect();
+            var x = (e.clientX - r.left) / r.width - 0.5;
+            var y = (e.clientY - r.top) / r.height - 0.5;
+            stage.style.transform = "rotateX(" + (-y * 8).toFixed(2) + "deg) rotateY(" + (x * 10).toFixed(2) + "deg)";
+          });
+          wrap.addEventListener("mouseleave", function () { stage.style.transform = ""; });
+        }
+        var cards = document.querySelectorAll(".feat-card");
+        cards.forEach(function (card) {
+          card.addEventListener("mousemove", function (e) {
+            var r = card.getBoundingClientRect();
+            var x = (e.clientX - r.left) / r.width - 0.5;
+            var y = (e.clientY - r.top) / r.height - 0.5;
+            card.style.transform = "perspective(700px) rotateX(" + (-y * 6).toFixed(2) + "deg) rotateY(" + (x * 7).toFixed(2) + "deg) translateY(-3px)";
+          });
+          card.addEventListener("mouseleave", function () { card.style.transform = ""; });
+        });
+      })();

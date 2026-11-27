@@ -625,3 +625,76 @@
         will-change: opacity, transform;
       }
       html.js .anim.in { opacity: 1; transform: translateY(0); }
+
+      /* ---------- Home page ---------- */
+      .home-hero .hero-flex { align-items: center; }
+      .home-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 0; }
+      .home-ctas .btn-main { color: #fff; }
+      .home-visual { flex: none; width: clamp(300px, 34vw, 430px); max-width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+      .home-visual .hero-logo { width: clamp(220px, 22vw, 300px); }
+      .home-3d { width: 100%; perspective: 1100px; padding: 10px 6px 4px; }
+      .home-3d-sway { animation: sway3d 9s ease-in-out infinite alternate; transform-style: preserve-3d; }
+      @keyframes sway3d { from { transform: rotateY(-2.5deg); } to { transform: rotateY(2.5deg); } }
+      .home-3d-scene { position: relative; transform-style: preserve-3d; transition: transform .2s ease-out; padding: 34px 18px 0; }
+      .bars3d { display: flex; align-items: flex-end; gap: 13px; height: 150px; justify-content: center; }
+      .b3d { position: relative; width: 30px; height: var(--h); border-radius: 3px 3px 0 0;
+        background: linear-gradient(180deg, #7dd3fc 0%, #0284c7 55%, #0369a1 100%);
+        animation: barGrow .9s cubic-bezier(.22, .61, .21, 1) both; animation-delay: var(--d); }
+      @keyframes barGrow { from { height: 0; } }
+      .b3d::before { content: ""; position: absolute; left: 7px; top: -13px; width: 30px; height: 13px;
+        background: #bae6fd; transform: skewX(-45deg); border-radius: 2px 0 0 0; }
+      .b3d::after { content: ""; position: absolute; right: -14px; top: -7px; width: 14px; height: calc(100% + 7px);
+        background: #075985; transform: skewY(-45deg); border-radius: 0 2px 2px 0; }
+      .b3d-hi { background: linear-gradient(180deg, #67e8f9 0%, #0891b2 55%, #155e75 100%); }
+      .b3d-today { background: linear-gradient(180deg, #93c5fd 0%, #2563eb 55%, #1e40af 100%); }
+      .bars-floor { height: 2px; margin-top: 0; background: linear-gradient(90deg, transparent, rgba(125, 211, 252, .55), transparent); border-radius: 2px; }
+      .float-chip { position: absolute; z-index: 3; background: rgba(10, 32, 60, .82); color: #e8f1fb;
+        border: 1px solid rgba(125, 211, 252, .45); border-radius: 999px; padding: 7px 12px;
+        font-size: 12.5px; font-weight: 700; white-space: nowrap; box-shadow: 0 10px 24px rgba(2, 20, 45, .45);
+        animation: chipFloat 4.5s ease-in-out infinite; animation-delay: var(--cd, 0s); }
+      @keyframes chipFloat { 0%, 100% { transform: translateZ(var(--z)) translateY(0); } 50% { transform: translateZ(var(--z)) translateY(-7px); } }
+      .float-chip.fc1 { top: 6px; right: -2px; --z: 80px; --cd: 0s; }
+      .float-chip.fc2 { bottom: 34px; left: -6px; --z: 60px; --cd: 1.2s; }
+      .float-chip.fc3 { top: 44%; right: -8px; --z: 40px; --cd: 2.1s; }
+      .home-section { margin-top: 34px; }
+      .home-section h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+      .home-sub { color: var(--ink-2); font-size: 15.5px; margin: 0 0 20px; max-width: 72ch; }
+      .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .feat-card { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+        padding: 20px; box-shadow: var(--shadow); color: var(--ink); text-decoration: none;
+        transition: transform .18s ease-out, box-shadow .18s ease-out, border-color .18s ease-out; will-change: transform; }
+      .feat-card:hover { border-color: var(--buy); box-shadow: 0 14px 30px rgba(2, 20, 45, .18); }
+      .feat-ic { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+        border-radius: 12px; background: var(--buy-soft); color: var(--buy); font-size: 22px; margin-bottom: 12px; }
+      .feat-card h3 { font-size: 18px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.01em; }
+      .feat-card p { color: var(--ink-2); font-size: 14.5px; line-height: 1.55; margin: 0 0 12px; }
+      .feat-link { font-size: 14px; font-weight: 700; color: var(--buy); }
+      .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+      .steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+      .step-n { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb, #06b6d4); color: #fff; font-weight: 800; font-size: 15px; margin-bottom: 10px; }
+      .steps h3 { font-size: 16.5px; font-weight: 800; margin: 0 0 5px; }
+      .steps p { color: var(--ink-2); font-size: 14px; line-height: 1.55; margin: 0; }
+      .home-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 34px; }
+      .home-stat { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); text-align: center; }
+      .home-stat .num { font-size: clamp(28px, 4vw, 38px); font-weight: 800; letter-spacing: -0.02em; color: var(--buy); line-height: 1; }
+      .home-stat .lbl { color: var(--ink-2); font-size: 13.5px; font-weight: 600; margin-top: 8px; }
+      .home-note { margin-top: 34px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; }
+      .home-note h3 { font-size: 17px; font-weight: 800; margin: 0 0 8px; }
+      .home-note p { color: var(--ink-2); font-size: 14.5px; line-height: 1.6; margin: 0; }
+      .home-note strong { color: var(--ink); }
+      @media (max-width: 900px) {
+        .feat-grid { grid-template-columns: repeat(2, 1fr); }
+        .steps { grid-template-columns: repeat(2, 1fr); }
+        .home-stats { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 720px) {
+        .home-visual { width: 100%; }
+        .home-ctas .btn { flex: 1 1 100%; justify-content: center; }
+        .feat-grid { grid-template-columns: 1fr; }
+        .steps { grid-template-columns: 1fr; }
+        .home-stats { grid-template-columns: repeat(2, 1fr); }
+        .float-chip.fc1 { right: 0; }
+        .float-chip.fc2 { left: 0; }
+        .float-chip.fc3 { right: 0; }
+      }
