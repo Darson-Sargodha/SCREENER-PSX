@@ -361,8 +361,8 @@
       }
       .vol-axis { display: flex; gap: 4px; margin-top: 8px; }
       .vol-lab { flex: 1 1 0; text-align: center; min-width: 0; }
-      .vol-lab .d { display: block; font-size: 12px; font-weight: 700; color: var(--ink-2); }
-      .vol-lab .v { display: block; font-size: 12.5px; margin-top: 1px; }
+      .vol-lab .d { display: block; font-size: 12px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+      .vol-lab .v { display: block; font-size: 12.5px; margin-top: 1px; white-space: nowrap; }
       .vol-avg-line { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
       .vol-avg-line strong { color: var(--ink); }
       .vol-live { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: 13px; font-weight: 600; color: var(--ink-2); }

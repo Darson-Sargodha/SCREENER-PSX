@@ -1430,7 +1430,7 @@
         axis.innerHTML = display.map(function (b, i) {
           var isToday = hasTodayBar && i === display.length - 1;
           var d = new Date(b.time * 1000);
-          var lab = isToday ? "Today" : VOL_WD[d.getUTCDay()] + " " + d.getUTCDate() + " " + VOL_MONTHS[d.getUTCMonth()];
+          var lab = isToday ? "Today" : d.getUTCDate() + " " + VOL_MONTHS[d.getUTCMonth()];
           // 30 bars: show the date only on every 5th bar and today, so the
           // axis stays readable; the volume stays under every bar.
           var showDate = isToday || (i % 5 === 4);
