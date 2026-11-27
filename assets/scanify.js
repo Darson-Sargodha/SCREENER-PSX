@@ -1912,3 +1912,25 @@
           card.addEventListener("mouseleave", function () { card.style.transform = ""; });
         });
       })();
+
+/* ---------- Header click ripple ---------- */
+(function () {
+  var nav = document.querySelector(".topnav");
+  if (!nav) return;
+  nav.addEventListener("click", function (e) {
+    var link = e.target && e.target.closest ? e.target.closest("a") : null;
+    if (!link || !nav.contains(link)) return;
+    var r = link.getBoundingClientRect();
+    // Synthetic clicks (tests) carry 0,0 — fall back to the pill centre.
+    var cx = e.clientX || (r.left + r.width / 2);
+    var cy = e.clientY || (r.top + r.height / 2);
+    var d = Math.max(r.width, r.height) * 2;
+    var rip = document.createElement("span");
+    rip.className = "ripple";
+    rip.style.width = rip.style.height = d + "px";
+    rip.style.left = (cx - r.left - d / 2) + "px";
+    rip.style.top = (cy - r.top - d / 2) + "px";
+    link.appendChild(rip);
+    setTimeout(function () { rip.remove(); }, 650);
+  });
+})();

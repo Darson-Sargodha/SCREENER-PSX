@@ -77,7 +77,9 @@
         -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
         border-bottom: 1px solid var(--line);
         box-shadow: var(--topbar-shadow);
+        animation: headerIn .5s ease both;
       }
+      @keyframes headerIn { from { opacity: 0; transform: translateY(-6px); } }
       .topbar-in {
         margin: 0 auto; padding: 8px clamp(16px, 2.5vw, 48px);
         display: flex; align-items: center; gap: 16px;
@@ -91,26 +93,43 @@
         background: linear-gradient(135deg, #0b1e33, #123a5c);
         border: 1px solid rgba(125, 211, 252, .45); border-radius: 11px;
         box-shadow: 0 4px 12px rgba(2, 20, 45, .28);
+        transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
       }
-      .brand-text { display: flex; flex-direction: column; line-height: 1.1; gap: 1px; min-width: 0; }
-      .brand-name { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; color: var(--ink); }
+      .brand:hover .logo-mark { transform: scale(1.06) rotate(-3deg); border-color: rgba(125, 211, 252, .85); box-shadow: 0 6px 18px rgba(34, 211, 238, .4); }
+      .brand { transition: transform .12s ease; }
+      .brand:active { transform: scale(.96); }
+      .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: var(--ink); }
       @supports ((background-clip: text) or (-webkit-background-clip: text)) {
         .brand-name {
-          background: linear-gradient(90deg, #2563eb, #06b6d4);
+          background: linear-gradient(90deg, #2563eb, #06b6d4, #2563eb);
+          background-size: 200% 100%;
           -webkit-background-clip: text; background-clip: text;
           -webkit-text-fill-color: transparent; color: transparent;
+          animation: wordmarkShift 6s linear infinite;
         }
       }
-      .brand-sub {
-        font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-        color: var(--ink-2); line-height: 1.2; white-space: nowrap;
-      }
+      /* Unconditional keyframes: his desktop reports prefers-reduced-motion
+         (Windows animation effects off) — gating would silently kill the
+         header animations on his PC (same lesson as the ticker). */
+      @keyframes wordmarkShift { to { background-position: 200% 0; } }
       .topnav { display: flex; gap: 3px; margin-left: auto; }
       .topnav a {
+        position: relative; overflow: hidden;
         color: var(--ink-2); text-decoration: none; font-size: 13px; font-weight: 600;
         padding: 7px 11px; border-radius: 999px; white-space: nowrap;
+        transition: transform .12s ease, background-color .18s ease, color .18s ease, box-shadow .18s ease;
       }
-      .topnav a:hover { color: var(--ink); background: var(--panel-2); }
+      .topnav a:hover { color: var(--ink); background: var(--panel-2); transform: translateY(-1px); }
+      .topnav a:active { transform: scale(.93); }
+      /* Click ripple: JS appends a .ripple span at the tap point, then
+         removes it. Blue on plain links, white on the gradient active pill. */
+      .topnav a .ripple {
+        position: absolute; border-radius: 50%; pointer-events: none;
+        background: rgba(2, 132, 199, .28);
+        transform: scale(0); animation: rippleGo .55s ease-out forwards;
+      }
+      .topnav a.active .ripple { background: rgba(255, 255, 255, .55); }
+      @keyframes rippleGo { to { transform: scale(1); opacity: 0; } }
       .live-pill {
         display: inline-flex; align-items: center; gap: 7px; flex: none;
         font-size: 12px; font-weight: 700; color: var(--buy);
@@ -557,7 +576,6 @@
       }
       @media (max-width: 720px) {
         .topnav { display: none; }
-        .brand-sub { display: none; }
         .live-pill { margin-left: auto; }
         .scan-head { padding: 24px 20px 22px; border-radius: 16px; }
         .hero-flex { flex-direction: column; gap: 18px; }
@@ -588,6 +606,11 @@
       .topnav a.active {
         background: linear-gradient(135deg, #2563eb, #06b6d4);
         color: #fff; box-shadow: 0 4px 12px rgba(2, 132, 199, .35);
+        animation: activeGlow 3s ease-in-out infinite;
+      }
+      @keyframes activeGlow {
+        0%, 100% { box-shadow: 0 4px 12px rgba(2, 132, 199, .35); }
+        50% { box-shadow: 0 4px 20px rgba(6, 182, 212, .6); }
       }
       .ticker { overflow: hidden; background: #0b1220; border-bottom: 1px solid var(--line); }
       .ticker-track { display: inline-flex; white-space: nowrap; padding: 8px 0; animation: tickerMove 45s linear infinite; will-change: transform; }
