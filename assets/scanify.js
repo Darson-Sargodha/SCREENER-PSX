@@ -1307,8 +1307,38 @@
       // so repeat symbol checks do not refetch the market. Pass force to
       // bypass the cache - the 30-second live refresh uses that.
       var DPS_PROXY_URL = "https://scanify-dps.afrasiabdarson.workers.dev";
-      function volFetchSnapshot(force) {
-        if (!force && volSnapCache) return Promise.resolve(volSnapCache);
+      // Last-good DPS snapshot kept in the browser, so a DPS outage (the
+      // portal's /market-watch sometimes answers 520 for a few minutes)
+      // does not empty the Today card: the card shows the last good figures
+      // for today, clearly labelled stale, until the feed recovers.
+      var VOL_SNAP_KEY = "scanify_vol_snap";
+      var volSnapStale = null; // asOf string of the snapshot in use, when stale
+      function volSnapSave(asOf, rows) {
+        try {
+          localStorage.setItem(VOL_SNAP_KEY, JSON.stringify({ asOf: asOf, rows: rows }));
+        } catch (e) { /* private mode / full storage: the stale fallback just stays off */ }
+      }
+      function volSnapReadStale(todayStr) {
+        try {
+          var raw = localStorage.getItem(VOL_SNAP_KEY);
+          if (!raw) return null;
+          var j = JSON.parse(raw);
+          if (!j || !j.asOf || (j.rows || []).length < 100) return null;
+          if (String(j.asOf).slice(0, 10) !== todayStr) return null; // yesterday's volumes are not today's
+          return j;
+        } catch (e) { return null; }
+      }
+      function volSnapToMap(j) {
+        var map = {};
+        j.rows.forEach(function (row) {
+          if (!row || !row.s) return;
+          var v = typeof row.v === "number" ? row.v : null;
+          var c = typeof row.c === "number" ? row.c : null;
+          map[row.s] = { s: row.s, v: v, val: (v !== null && c !== null) ? v * c : null, c: c };
+        });
+        return map;
+      }
+      function volFetchSnapshotOnce() {
         var ctrl = ("AbortController" in window) ? new AbortController() : null;
         var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 25000) : null;
         return fetch(DPS_PROXY_URL, {
@@ -1319,16 +1349,27 @@
           return r.json();
         }).then(function (j) {
           if (!j || !j.ok || (j.rows || []).length < 100) throw new Error("bad DPS snapshot");
-          var map = {};
-          j.rows.forEach(function (row) {
-            if (!row || !row.s) return;
-            var v = typeof row.v === "number" ? row.v : null;
-            var c = typeof row.c === "number" ? row.c : null;
-            map[row.s] = { s: row.s, v: v, val: (v !== null && c !== null) ? v * c : null, c: c };
-          });
+          var map = volSnapToMap(j);
           volSnapCache = map;
+          volSnapStale = j.stale ? (j.asOf || "") : null;
+          if (!j.stale) volSnapSave(j.asOf || "", j.rows);
           return map;
         }).catch(function (e) { if (timer) clearTimeout(timer); throw e; });
+      }
+      function volFetchSnapshot(force) {
+        if (!force && volSnapCache) return Promise.resolve(volSnapCache);
+        // One quick retry: a DPS 520 is often gone a couple of seconds later.
+        return volFetchSnapshotOnce().catch(function () {
+          return new Promise(function (res) { setTimeout(res, 2000); }).then(volFetchSnapshotOnce);
+        }).catch(function () {
+          // DPS still down: fall back to today's last good snapshot, if any.
+          var stale = volSnapReadStale(volTodayStr());
+          if (!stale) throw new Error("DPS snapshot unavailable");
+          var map = volSnapToMap(stale);
+          volSnapCache = map;
+          volSnapStale = stale.asOf || "";
+          return map;
+        });
       }
       function volRenderTop(map) {
         var rows = Object.keys(map).map(function (k) { return map[k]; })
@@ -1430,11 +1471,16 @@
         axis.innerHTML = display.map(function (b, i) {
           var isToday = hasTodayBar && i === display.length - 1;
           var d = new Date(b.time * 1000);
-          var lab = isToday ? "Today" : d.getUTCDate() + " " + VOL_MONTHS[d.getUTCMonth()];
-          // 30 bars: show the date only on every 5th bar and today, so the
-          // axis stays readable; the volume stays under every bar.
-          var showDate = isToday || (i % 5 === 4);
-          return '<div class="vol-lab"><span class="d">' + (showDate ? lab : "") + '</span><span class="v mono">' + fmtVolShort(b.volume || 0) + "</span></div>";
+          // A date under every column: the day number on each bar, with the
+          // month shown on the first bar and wherever the month changes
+          // ("22 Oct", then "23", "24" ... "1 Nov", ...). A full "22 Oct"
+          // under every bar cannot fit in a ~30px column and collides.
+          var prevM = i > 0 ? new Date(display[i - 1].time * 1000).getUTCMonth() : null;
+          var lab;
+          if (isToday) lab = "Today";
+          else if (prevM === null || d.getUTCMonth() !== prevM) lab = d.getUTCDate() + " " + VOL_MONTHS[d.getUTCMonth()];
+          else lab = String(d.getUTCDate());
+          return '<div class="vol-lab"><span class="d">' + lab + '</span><span class="v mono">' + fmtVolShort(b.volume || 0) + "</span></div>";
         }).join("");
         avgLine.innerHTML = avg30
           ? "30-day average volume: <strong class=\"mono\">" + fmtNum(Math.round(avg30)) + " shares</strong> — averaged over the last 30 completed sessions" + (hasTodayBar ? "; today's session is the last bar above." : ".")
@@ -1459,6 +1505,7 @@
           volLastBars = bars; // kept for the 30s live refresh (CSV only changes at the close)
           if (snap) volRenderTop(snap);
           volRender(sym, bars, snap ? snap[sym] : null);
+          if (snap && volSnapStale) volSetLive("DPS feed is down — showing last good data from " + volSnapStale.slice(11, 16) + " PKT. Retrying…", false);
           if (!bars && !snap) {
             volSetStatus("Volume data for " + sym + " could not be loaded — please check your internet connection and try again.", "err");
           } else if (!bars) {
@@ -1516,7 +1563,8 @@
           if (!snap) { volSetLive("Live update failed — will retry in 30 seconds.", false); return; }
           volRenderTop(snap);
           volRender(volSym, volLastBars, snap[volSym]);
-          volSetLive("Live · updated " + volPktTime(new Date()) + " PKT", true);
+          if (volSnapStale) volSetLive("DPS feed is down — showing last good data from " + volSnapStale.slice(11, 16) + " PKT. Retrying…", false);
+          else volSetLive("Live · updated " + volPktTime(new Date()) + " PKT", true);
         }).catch(function () {
           volSetLive("Live update failed — will retry in 30 seconds.", false);
         });
