@@ -365,6 +365,9 @@
       .vol-lab .v { display: block; font-size: 12.5px; margin-top: 1px; }
       .vol-avg-line { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
       .vol-avg-line strong { color: var(--ink); }
+      .vol-live { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+      .vol-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--buy); flex: none; }
+      .vol-live.paused .vol-dot { background: var(--ink-2); opacity: .6; }
       @media (max-width: 720px) {
         .vol-plot { height: 140px; gap: 6px; }
         .vol-axis { gap: 6px; }

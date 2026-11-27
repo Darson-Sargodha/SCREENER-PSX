@@ -1258,7 +1258,7 @@
       // and the 7-day average come from SuperX's daily CSV. Only total traded
       // volume is published for PSX stocks, so this section shows totals only —
       // there is no split of the total into sides anywhere here.
-      var volSym = "OGDC", volReq = 0, volSnapCache = null;
+      var volSym = "OGDC", volReq = 0, volSnapCache = null, volLastBars = null, volTimer = null;
       var VOL_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       var VOL_WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       function volSetStatus(msg, cls) {
@@ -1313,9 +1313,10 @@
       }
       // One live snapshot of the whole universe: symbol -> { v, val }. It feeds
       // both the Today card and the Most Active list, and is cached for the
-      // session so repeat symbol checks do not refetch the market.
-      function volFetchSnapshot() {
-        if (volSnapCache) return Promise.resolve(volSnapCache);
+      // session so repeat symbol checks do not refetch the market. Pass force
+      // to bypass the cache — the 30-second live refresh uses that.
+      function volFetchSnapshot(force) {
+        if (!force && volSnapCache) return Promise.resolve(volSnapCache);
         var PAGE = 400;
         var map = {};
         function add(rows) {
@@ -1450,6 +1451,7 @@
         Promise.all([csvP, snapP]).then(function (res) {
           if (req !== volReq) return; // a newer search has taken over
           var bars = res[0], snap = res[1];
+          volLastBars = bars; // kept for the 30s live refresh (CSV only changes at the close)
           if (snap) volRenderTop(snap);
           volRender(sym, bars, snap ? snap[sym] : null);
           if (!bars && !snap) {
@@ -1469,11 +1471,60 @@
         document.getElementById("volInput").value = raw;
         volLoad(raw);
       }
+      // ---------- Live auto-refresh (30s): volume only ----------
+      // PSX trades Mon–Fri 09:30–15:30 PKT. The snapshot is the only live
+      // piece (the 7-day average comes from the daily SuperX CSV, which
+      // only changes at the close), so a tick refetches just the snapshot
+      // and re-renders the Today card + Most Active list for the current
+      // symbol. The tab-hidden check and the market-hours gate keep it from
+      // burning requests overnight or in a background tab.
+      var VOL_REFRESH_MS = 30000;
+      function volPktParts(d) {
+        try {
+          var fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+          var p = {};
+          fmt.formatToParts(d).forEach(function (x) { p[x.type] = x.value; });
+          return { wd: p.weekday, mins: (+p.hour) * 60 + (+p.minute) };
+        } catch (e) { return { wd: "", mins: -1 }; }
+      }
+      function volMarketOpenAt(d) {
+        var p = volPktParts(d);
+        if (p.wd === "Sat" || p.wd === "Sun") return false;
+        return p.mins >= 570 && p.mins < 930; // 09:30–15:30 PKT
+      }
+      function volPktTime(d) {
+        try {
+          return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Karachi", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(d);
+        } catch (e) { return ""; }
+      }
+      function volSetLive(text, live) {
+        var el = document.getElementById("volLive");
+        var tx = document.getElementById("volLiveText");
+        if (!el || !tx) return;
+        tx.textContent = text;
+        el.classList.toggle("paused", !live);
+      }
+      function volRefreshTick() {
+        if (document.hidden) { volSetLive("Paused — tab is in the background.", false); return; }
+        if (!volMarketOpenAt(new Date())) { volSetLive("Market closed — live updates resume at 9:30 AM PKT.", false); return; }
+        volFetchSnapshot(true).then(function (snap) {
+          if (!snap) { volSetLive("Live update failed — will retry in 30 seconds.", false); return; }
+          volRenderTop(snap);
+          volRender(volSym, volLastBars, snap[volSym]);
+          volSetLive("Live · updated " + volPktTime(new Date()) + " PKT", true);
+        }).catch(function () {
+          volSetLive("Live update failed — will retry in 30 seconds.", false);
+        });
+      }
       if (document.getElementById("volBtn")) {
       document.getElementById("volBtn").addEventListener("click", volSearch);
       document.getElementById("volInput").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); volSearch(); } });
       // Default stock: OGDC loads with the page, like Advance Charting
       volLoad("OGDC");
+      // Live updates every 30s while the market is open (see volRefreshTick).
+      if (!volMarketOpenAt(new Date())) volSetLive("Market closed — live updates resume at 9:30 AM PKT.", false);
+      else volSetLive("Live · updating every 30 seconds…", true);
+      if (!volTimer) volTimer = setInterval(volRefreshTick, VOL_REFRESH_MS);
       }
 
       if (document.getElementById("scanBtn")) {
