@@ -37,7 +37,7 @@
       <!-- Volume Monitor -->
       <div class="manual" id="volMonitor">
         <h2 class="anim">Volume Monitor</h2>
-        <p class="sub anim" style="--d:.1s">Today&rsquo;s traded volume for any PSX stock, its last 7 sessions, and how today compares with the 7-day average. Every figure shown is actual traded volume.</p>
+        <p class="sub anim" style="--d:.1s">Today&rsquo;s traded volume for any PSX stock, its last 30 sessions (today&rsquo;s live bar included), and how today compares with the 30-day average. Every figure shown is actual traded volume.</p>
         <div class="manual-row">
           <div class="field">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
@@ -54,12 +54,12 @@
           <div class="manual-grid">
             <div class="cell"><div class="k">Volume Today</div><div class="val" id="volTodayVol">—</div></div>
             <div class="cell"><div class="k">Value Traded Today (approx.)</div><div class="val" id="volTodayVal">—</div></div>
-            <div class="cell"><div class="k">Volume vs 7-Day Average</div><div class="val" id="volTodayX">—</div></div>
-            <div class="cell"><div class="k">Change vs 7-Day Average</div><div class="val" id="volTodayChg">—</div></div>
+            <div class="cell"><div class="k">Volume vs 30-Day Average</div><div class="val" id="volTodayX">—</div></div>
+            <div class="cell"><div class="k">Change vs 30-Day Average</div><div class="val" id="volTodayChg">—</div></div>
           </div>
         </div>
         <p class="vol-live" id="volLive"><span class="vol-dot" aria-hidden="true"></span><span id="volLiveText">Starting live updates…</span></p>
-        <h3 class="adv-signals-title anim">Last 7 Sessions</h3>
+        <h3 class="adv-signals-title anim">Last 30 Sessions</h3>
         <div class="vol-plot" id="volPlot"></div>
         <div class="vol-axis" id="volAxis"></div>
         <p class="vol-avg-line" id="volAvgLine"></p>

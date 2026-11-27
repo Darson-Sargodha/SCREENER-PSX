@@ -1256,7 +1256,7 @@
       // Today's volume comes live from the PSX Data Portal through Scanify's
       // own Cloudflare Worker (the Worker fetches dps.psx.com.pk server-side
       // and re-serves it with CORS open; DPS blocks browser requests with a
-      // 403). The daily volume history and the 7-day average come from
+      // 403). The daily volume history and the 30-day average come from
       // SuperX's daily CSV. DPS publishes exact volume but no per-symbol
       // value-traded column, so value traded is volume x current close
       // (approximate - labelled as such on the page). Only total traded
@@ -1284,6 +1284,13 @@
           fmt.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
           return p.year + "-" + p.month + "-" + p.day;
         } catch (e) { return ""; }
+      }
+      // Today's date (YYYY-MM-DD, Pakistan clock) as a UTC-midnight Unix
+      // timestamp, matching the SuperX CSV bars' time values.
+      function volTodayTs(todayStr) {
+        var p = (todayStr || "").split("-");
+        if (p.length !== 3) return Math.floor(Date.now() / 1000);
+        return Date.UTC(+p[0], +p[1] - 1, +p[2]) / 1000;
       }
       function fmtVolShort(n) {
         if (typeof n !== "number" || !isFinite(n)) return "—";
@@ -1349,20 +1356,30 @@
       }
       function volRender(sym, bars, todayRec) {
         var todayStr = volTodayStr();
-        var completed = [], display = [], avg7 = null, csvHasToday = false;
+        var completed = [], display = [], avg30 = null, csvHasToday = false, hasTodayBar = false;
         if (bars && bars.length) {
           // If the CSV's latest session IS today (after the close), that row is
           // today's bar; the completed sessions are everything before it, so
-          // today is never counted inside its own 7-day average.
+          // today is never counted inside its own 30-day average. During the
+          // day the CSV has no today row, so today's live bar comes from the
+          // DPS snapshot instead and is likewise kept out of the average.
           csvHasToday = volDateStr(bars[bars.length - 1].time) === todayStr;
           completed = csvHasToday ? bars.slice(0, bars.length - 1) : bars.slice();
-          var last7c = completed.slice(-7);
-          if (last7c.length) {
+          var last30c = completed.slice(-30);
+          if (last30c.length) {
             var sum = 0;
-            last7c.forEach(function (b) { sum += b.volume || 0; });
-            avg7 = sum / last7c.length;
+            last30c.forEach(function (b) { sum += b.volume || 0; });
+            avg30 = sum / last30c.length;
           }
-          display = bars.slice(-7);
+          // 30 bars in total: the last 29 completed sessions + today.
+          display = completed.slice(-29);
+          if (csvHasToday) {
+            display.push(bars[bars.length - 1]);
+            hasTodayBar = true;
+          } else if (todayRec && typeof todayRec.v === "number") {
+            display.push({ time: volTodayTs(todayStr), volume: todayRec.v, live: true });
+            hasTodayBar = true;
+          }
         }
         // Today card — live scanner figures
         document.getElementById("volToday").style.display = "";
@@ -1375,10 +1392,10 @@
         document.getElementById("volTodayVal").textContent = tval !== null ? "Rs " + fmtNum(Math.round(tval)) : "—";
         var ratioEl = document.getElementById("volTodayX");
         var chgEl = document.getElementById("volTodayChg");
-        if (tv !== null && avg7) {
-          var ratio = tv / avg7;
+        if (tv !== null && avg30) {
+          var ratio = tv / avg30;
           ratioEl.textContent = (Math.round(ratio * 100) / 100) + "× average";
-          var pct = (tv - avg7) / avg7 * 100;
+          var pct = (tv - avg30) / avg30 * 100;
           chgEl.textContent = (pct > 0 ? "+" : "") + pct.toFixed(1) + "%";
           chgEl.className = "val " + (pct > 0 ? "chg-up" : (pct < 0 ? "chg-dn" : "chg-flat"));
         } else {
@@ -1386,7 +1403,7 @@
           chgEl.textContent = "—";
           chgEl.className = "val";
         }
-        // Last 7 sessions — daily volume bars with the average as a dashed level
+        // Last 30 sessions — daily volume bars with the average as a dashed level
         var plot = document.getElementById("volPlot");
         var axis = document.getElementById("volAxis");
         var avgLine = document.getElementById("volAvgLine");
@@ -1398,27 +1415,30 @@
         }
         var max = 0;
         display.forEach(function (b) { max = Math.max(max, b.volume || 0); });
-        if (avg7) max = Math.max(max, avg7);
+        if (avg30) max = Math.max(max, avg30);
         if (!max) max = 1;
         var html = "";
-        if (avg7) {
-          html += '<div class="vol-avgdash" style="bottom:' + (avg7 / max * 100).toFixed(1) + '%"><span class="vol-avg-tag">7-day average · ' + fmtVolShort(avg7) + "</span></div>";
+        if (avg30) {
+          html += '<div class="vol-avgdash" style="bottom:' + (avg30 / max * 100).toFixed(1) + '%"><span class="vol-avg-tag">30-day average · ' + fmtVolShort(avg30) + "</span></div>";
         }
         display.forEach(function (b, i) {
-          var isToday = csvHasToday && i === display.length - 1;
+          var isToday = hasTodayBar && i === display.length - 1;
           var h = Math.max(1.5, (b.volume || 0) / max * 100);
-          html += '<div class="vol-col"><div class="vol-bar' + (isToday ? " today" : "") + '" style="height:' + h.toFixed(1) + '%" title="' + esc(advFmtDate(b.time)) + " — " + fmtNum(b.volume || 0) + ' shares"></div></div>';
+          html += '<div class="vol-col"><div class="vol-bar' + (isToday ? " today" : "") + '" style="height:' + h.toFixed(1) + '%" title="' + esc(advFmtDate(b.time)) + " — " + fmtNum(b.volume || 0) + " shares" + (b.live ? " (live)" : "") + '"></div></div>';
         });
         plot.innerHTML = html;
         axis.innerHTML = display.map(function (b, i) {
-          var isToday = csvHasToday && i === display.length - 1;
+          var isToday = hasTodayBar && i === display.length - 1;
           var d = new Date(b.time * 1000);
           var lab = isToday ? "Today" : VOL_WD[d.getUTCDay()] + " " + d.getUTCDate() + " " + VOL_MONTHS[d.getUTCMonth()];
-          return '<div class="vol-lab"><span class="d">' + lab + '</span><span class="v mono">' + fmtVolShort(b.volume || 0) + "</span></div>";
+          // 30 bars: show the date only on every 5th bar and today, so the
+          // axis stays readable; the volume stays under every bar.
+          var showDate = isToday || (i % 5 === 4);
+          return '<div class="vol-lab"><span class="d">' + (showDate ? lab : "") + '</span><span class="v mono">' + fmtVolShort(b.volume || 0) + "</span></div>";
         }).join("");
-        avgLine.innerHTML = avg7
-          ? "7-day average volume: <strong class=\"mono\">" + fmtNum(Math.round(avg7)) + " shares</strong> — averaged over the last 7 completed sessions" + (csvHasToday ? "; today's session is the last bar above." : ".")
-          : "Not enough completed sessions yet to compute a 7-day average for " + esc(sym) + ".";
+        avgLine.innerHTML = avg30
+          ? "30-day average volume: <strong class=\"mono\">" + fmtNum(Math.round(avg30)) + " shares</strong> — averaged over the last 30 completed sessions" + (hasTodayBar ? "; today's session is the last bar above." : ".")
+          : "Not enough completed sessions yet to compute a 30-day average for " + esc(sym) + ".";
       }
       function volLoad(sym) {
         var req = ++volReq;
@@ -1458,7 +1478,7 @@
       }
       // ---------- Live auto-refresh (30s): volume only ----------
       // PSX trades Mon–Fri 09:30–15:30 PKT. The snapshot is the only live
-      // piece (the 7-day average comes from the daily SuperX CSV, which
+      // piece (the 30-day average comes from the daily SuperX CSV, which
       // only changes at the close), so a tick refetches just the snapshot
       // and re-renders the Today card + Most Active list for the current
       // symbol. The tab-hidden check and the market-hours gate keep it from
