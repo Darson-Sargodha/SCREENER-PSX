@@ -1523,6 +1523,124 @@
         }
       })();
 
+      // ---------- Tool Performance page (History) ----------
+      // Reads scanify_setups (public read) and renders the summary cards +
+      // the History table. Guarded: runs only on performance.html (perfTable
+      // exists). If Firebase is unavailable the page shows its offline note
+      // and nothing crashes. No strategy text anywhere on this page.
+      (function () {
+        var table = document.getElementById("perfTable");
+        if (!table) { return; }
+        var body = document.getElementById("perfBody");
+        var emptyEl = document.getElementById("perfEmpty");
+        var noteEl = document.getElementById("perfNote");
+        var countEl = document.getElementById("perfCount");
+        var tfSel = document.getElementById("perfTf");
+        var sideSel = document.getElementById("perfSide");
+        var statusSel = document.getElementById("perfStatus");
+        var TF_LABEL = { "1D": "Daily", "1W": "Weekly", "4H": "4H", "1H": "1H", "15m": "15m" };
+        var allRows = [];
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+        function setText(id, v) {
+          var el = document.getElementById(id);
+          if (el) { el.textContent = v; }
+        }
+        function pct(n, d) { return d ? Math.round(n / d * 100) + "%" : "—"; }
+        function fmtDay(iso) {
+          if (!iso) { return "—"; }
+          var p = iso.split("-");
+          var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          return parseInt(p[2], 10) + " " + months[parseInt(p[1], 10) - 1] + " " + p[0];
+        }
+        function daysOpen(iso) {
+          var then = Date.parse(iso + "T00:00:00+05:00");
+          if (!isFinite(then)) { return ""; }
+          var d = Math.floor((Date.now() - then) / 86400000);
+          return d <= 0 ? "today" : d + "d";
+        }
+        function outcomeDate(r) {
+          if (r.status === "tp2") { return fmtDay(r.hitDateTp2); }
+          if (r.status === "sl") { return fmtDay(r.hitDateSl); }
+          if (r.status === "tp1") { return fmtDay(r.hitDateTp1); }
+          return "—";
+        }
+        function statusText(r) {
+          if (r.status === "tp2") { return "TP2 hit"; }
+          if (r.status === "sl") { return "SL hit"; }
+          if (r.status === "tp1") { return "TP1 hit · " + daysOpen(r.date); }
+          return "Open · " + daysOpen(r.date);
+        }
+        function renderSummary(rows) {
+          var total = rows.length, tp2 = 0, tp1 = 0, sl = 0, open = 0;
+          rows.forEach(function (r) {
+            if (r.status === "tp2") { tp2++; }
+            else if (r.status === "tp1") { tp1++; }
+            else if (r.status === "sl") { sl++; }
+            else { open++; }
+          });
+          var closed = tp2 + sl;
+          setText("perfTotal", String(total));
+          setText("perfWins", closed ? Math.round(tp2 / closed * 100) + "%" : "—");
+          setText("perfWinsSub", closed ? tp2 + " of " + closed + " closed" : "no closed setups yet");
+          setText("perfTp2", pct(tp2, total));
+          setText("perfTp1", pct(tp1, total));
+          setText("perfSl", pct(sl, total));
+          setText("perfOpen", String(open));
+        }
+        function render() {
+          var tf = tfSel.value, side = sideSel.value, st = statusSel.value;
+          var rows = allRows.filter(function (r) {
+            if (tf !== "all" && r.timeframe !== tf) { return false; }
+            if (side !== "all" && r.side !== side) { return false; }
+            if (st !== "all" && (r.status || "open") !== st) { return false; }
+            return true;
+          });
+          renderSummary(allRows);
+          countEl.textContent = rows.length + (rows.length === 1 ? " setup" : " setups");
+          if (!rows.length) {
+            body.innerHTML = "";
+            emptyEl.hidden = false;
+            return;
+          }
+          emptyEl.hidden = true;
+          var html = "";
+          rows.forEach(function (r) {
+            html += "<tr><td>" + esc(fmtDay(r.date)) + "</td><td>" + esc(TF_LABEL[r.timeframe] || r.timeframe) + "</td><td><strong>" + esc(r.symbol) + "</strong></td><td>" + esc(r.side) + "</td><td class=\"mono\">" + fmtPrice(r.entry) + "</td><td class=\"mono\">" + fmtPrice(r.sl) + "</td><td class=\"mono\">" + fmtPrice(r.tp1) + "</td><td class=\"mono\">" + fmtPrice(r.tp2) + "</td><td>" + esc(statusText(r)) + "</td><td>" + esc(outcomeDate(r)) + "</td></tr>";
+          });
+          body.innerHTML = html;
+        }
+        function offline() {
+          noteEl.textContent = "Saved setups could not be loaded right now — the connection is unavailable. Please check your internet and refresh the page.";
+        }
+        function load() {
+          if (!window.__scanifyDb) { offline(); return; }
+          window.__scanifyDb.collection("scanify_setups").orderBy("date", "desc").limit(200).get().then(function (snap) {
+            allRows = [];
+            snap.forEach(function (d) {
+              var r = d.data();
+              r.id = d.id;
+              allRows.push(r);
+            });
+            // Newest first; same-date rows in symbol order. Cap at 200 in
+            // the client as well as in the query.
+            allRows.sort(function (a, b) {
+              return (b.date || "").localeCompare(a.date || "") || (a.symbol || "").localeCompare(b.symbol || "");
+            });
+            allRows = allRows.slice(0, 200);
+            noteEl.textContent = "";
+            render();
+          }).catch(function () { offline(); });
+        }
+        tfSel.addEventListener("change", render);
+        sideSel.addEventListener("change", render);
+        statusSel.addEventListener("change", render);
+        load();
+      })();
+
       // ---------- Heading + text reveal: smooth once-only entrance ----------
       // Headings (and the hero text group) start hidden only when JavaScript
       // is running (html.js is added by the tiny script in <head> before
