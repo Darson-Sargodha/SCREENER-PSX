@@ -16,6 +16,7 @@
         --seg-active-bg: #0a1f3d;
         --seg-active-ink: #ffffff;
         --topbar-bg: rgba(255, 255, 255, .88);
+        --topbar-shadow: 0 6px 20px rgba(8, 30, 60, .07);
         --hero-1: #0c2c5e;
         --hero-2: #071a38;
         --hero-3: #06334a;
@@ -45,6 +46,7 @@
           --seg-active-bg: #e8f1fb;
           --seg-active-ink: #0a1730;
           --topbar-bg: rgba(6, 11, 22, .88);
+          --topbar-shadow: 0 6px 20px rgba(0, 0, 0, .4);
           --hero-1: #0e3168;
           --hero-2: #081c3d;
           --hero-3: #07334a;
@@ -74,30 +76,46 @@
         background: var(--topbar-bg);
         -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
         border-bottom: 1px solid var(--line);
+        box-shadow: var(--topbar-shadow);
       }
       .topbar-in {
-        margin: 0 auto; padding: 10px clamp(16px, 2.5vw, 48px);
-        display: flex; align-items: center; gap: 18px;
+        margin: 0 auto; padding: 8px clamp(16px, 2.5vw, 48px);
+        display: flex; align-items: center; gap: 16px;
       }
       .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-width: 0; }
       .logo-mark { flex: none; display: block; width: auto; }
-      .brand .logo-mark { height: 40px; }
-      .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
-      .brand-sub {
-        font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
-        color: var(--ink-2); border-left: 1px solid var(--line); padding-left: 10px; line-height: 1.25;
+      /* The S mark sits in a dark app-icon tile so it reads clearly on the
+         light header too (bare blue on white was low-contrast). */
+      .brand .logo-mark {
+        height: 34px; padding: 4px 5px;
+        background: linear-gradient(135deg, #0b1e33, #123a5c);
+        border: 1px solid rgba(125, 211, 252, .45); border-radius: 11px;
+        box-shadow: 0 4px 12px rgba(2, 20, 45, .28);
       }
-      .topnav { display: flex; gap: 4px; margin-left: auto; }
+      .brand-text { display: flex; flex-direction: column; line-height: 1.1; gap: 1px; min-width: 0; }
+      .brand-name { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; color: var(--ink); }
+      @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+        .brand-name {
+          background: linear-gradient(90deg, #2563eb, #06b6d4);
+          -webkit-background-clip: text; background-clip: text;
+          -webkit-text-fill-color: transparent; color: transparent;
+        }
+      }
+      .brand-sub {
+        font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+        color: var(--ink-2); line-height: 1.2; white-space: nowrap;
+      }
+      .topnav { display: flex; gap: 3px; margin-left: auto; }
       .topnav a {
-        color: var(--ink-2); text-decoration: none; font-size: 14px; font-weight: 600;
-        padding: 8px 12px; border-radius: 8px;
+        color: var(--ink-2); text-decoration: none; font-size: 13px; font-weight: 600;
+        padding: 7px 11px; border-radius: 999px; white-space: nowrap;
       }
       .topnav a:hover { color: var(--ink); background: var(--panel-2); }
       .live-pill {
         display: inline-flex; align-items: center; gap: 7px; flex: none;
-        font-size: 12.5px; font-weight: 700; color: var(--buy);
+        font-size: 12px; font-weight: 700; color: var(--buy);
         background: var(--buy-soft); border: 1px solid var(--line);
-        border-radius: 999px; padding: 6px 12px;
+        border-radius: 999px; padding: 5px 11px;
       }
       .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; flex: none; }
       @media (prefers-reduced-motion: no-preference) {
@@ -567,7 +585,10 @@
         .table-card tbody tr td.sym::before { content: "Symbol"; align-self: center; }
       }
       /* ---------- Multi-page (5 pages): nav active state, testing ticker, feedback ---------- */
-      .topnav a.active { color: var(--ink); background: var(--panel-2); }
+      .topnav a.active {
+        background: linear-gradient(135deg, #2563eb, #06b6d4);
+        color: #fff; box-shadow: 0 4px 12px rgba(2, 132, 199, .35);
+      }
       .ticker { overflow: hidden; background: #0b1220; border-bottom: 1px solid var(--line); }
       .ticker-track { display: inline-flex; white-space: nowrap; padding: 8px 0; animation: tickerMove 45s linear infinite; will-change: transform; }
       .ticker-track span { font-size: 13px; font-weight: 600; color: #fbbf24; }
