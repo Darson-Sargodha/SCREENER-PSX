@@ -246,6 +246,10 @@
       .stat .num { font-size: clamp(26px, 4.6vw, 36px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
       .stat.buy .num { color: var(--buy); }
       .stat.sell .num { color: var(--red); }
+      @keyframes perfFlashWin { from { background-color: var(--buy-soft); } to { background-color: transparent; } }
+      @keyframes perfFlashLoss { from { background-color: var(--red-soft); } to { background-color: transparent; } }
+      #perfBody tr.perf-flash-win { animation: perfFlashWin 3s ease-out forwards; }
+      #perfBody tr.perf-flash-loss { animation: perfFlashLoss 3s ease-out forwards; }
       .result-meta { margin: 14px 2px 0; font-size: 14px; color: var(--ink-2); font-weight: 600; }
 
       /* ---------- Manual check ---------- */

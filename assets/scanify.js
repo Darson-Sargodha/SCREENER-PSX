@@ -1774,7 +1774,7 @@
           setText("perfSl", pct(sl, total));
           setText("perfOpen", String(open));
         }
-        function render() {
+        function render(changed) {
           var tf = tfSel.value, side = sideSel.value, st = statusSel.value;
           var rows = allRows.filter(function (r) {
             if (tf !== "all" && r.timeframe !== tf) { return false; }
@@ -1792,35 +1792,63 @@
           emptyEl.hidden = true;
           var html = "";
           rows.forEach(function (r) {
-            html += "<tr><td>" + esc(fmtDay(r.date)) + "</td><td>" + esc(TF_LABEL[r.timeframe] || r.timeframe) + "</td><td><strong>" + esc(r.symbol) + "</strong></td><td>" + esc(r.side) + "</td><td class=\"mono\">" + fmtPrice(r.entry) + "</td><td class=\"mono\">" + fmtPrice(r.sl) + "</td><td class=\"mono\">" + fmtPrice(r.tp1) + "</td><td class=\"mono\">" + fmtPrice(r.tp2) + "</td><td>" + esc(statusText(r)) + "</td><td>" + esc(outcomeDate(r)) + "</td></tr>";
+            html += "<tr data-id=\"" + esc(r.id) + "\"><td>" + esc(fmtDay(r.date)) + "</td><td>" + esc(TF_LABEL[r.timeframe] || r.timeframe) + "</td><td><strong>" + esc(r.symbol) + "</strong></td><td>" + esc(r.side) + "</td><td class=\"mono\">" + fmtPrice(r.entry) + "</td><td class=\"mono\">" + fmtPrice(r.sl) + "</td><td class=\"mono\">" + fmtPrice(r.tp1) + "</td><td class=\"mono\">" + fmtPrice(r.tp2) + "</td><td>" + esc(statusText(r)) + "</td><td>" + esc(outcomeDate(r)) + "</td></tr>";
           });
           body.innerHTML = html;
+          // A row whose outcome just changed flashes briefly, so a TP/SL
+          // hit is easy to spot the moment it lands.
+          if (changed && changed.length) {
+            changed.forEach(function (c) {
+              var tr = body.querySelector('tr[data-id="' + c.id + '"]');
+              if (tr) { tr.classList.add(c.status === "sl" ? "perf-flash-loss" : "perf-flash-win"); }
+            });
+          }
         }
         function offline() {
           noteEl.textContent = "Saved setups could not be loaded right now — the connection is unavailable. Please check your internet and refresh the page.";
         }
+        // Live listener: the table and the summary cards update the moment
+        // a setup is saved or its outcome (TP1/TP2/SL) changes in
+        // Firestore — no reload needed. The first snapshot is the initial
+        // load; later ones are the live updates.
+        var prevStatus = {};
+        var firstSnap = true;
         function load() {
           if (!window.__scanifyDb) { offline(); return; }
-          window.__scanifyDb.collection("scanify_setups").orderBy("date", "desc").limit(200).get().then(function (snap) {
-            allRows = [];
+          window.__scanifyDb.collection("scanify_setups").orderBy("date", "desc").limit(200).onSnapshot(function (snap) {
+            var next = [];
             snap.forEach(function (d) {
               var r = d.data();
               r.id = d.id;
-              allRows.push(r);
+              next.push(r);
             });
             // Newest first; same-date rows in symbol order. Cap at 200 in
             // the client as well as in the query.
-            allRows.sort(function (a, b) {
+            next.sort(function (a, b) {
               return (b.date || "").localeCompare(a.date || "") || (a.symbol || "").localeCompare(b.symbol || "");
             });
-            allRows = allRows.slice(0, 200);
-            noteEl.textContent = "";
-            render();
-          }).catch(function () { offline(); });
+            next = next.slice(0, 200);
+            var changed = [];
+            if (!firstSnap) {
+              next.forEach(function (r) {
+                var cur = r.status || "open";
+                if (prevStatus[r.id] !== undefined && prevStatus[r.id] !== cur) {
+                  changed.push({ id: r.id, status: cur });
+                }
+              });
+            }
+            prevStatus = {};
+            next.forEach(function (r) { prevStatus[r.id] = r.status || "open"; });
+            allRows = next;
+            firstSnap = false;
+            var now = new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Karachi", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+            noteEl.textContent = "Live · updated " + now + " PKT";
+            render(changed);
+          }, function () { offline(); });
         }
-        tfSel.addEventListener("change", render);
-        sideSel.addEventListener("change", render);
-        statusSel.addEventListener("change", render);
+        tfSel.addEventListener("change", function () { render(); });
+        sideSel.addEventListener("change", function () { render(); });
+        statusSel.addEventListener("change", function () { render(); });
         load();
       })();
 
