@@ -1253,9 +1253,13 @@
       }
 
       // ---------- Volume Monitor (actual traded volume only) ----------
-      // Today's volume and value traded come live from the TradingView scanner
-      // (the same text/plain POST the screener uses); the daily volume history
-      // and the 7-day average come from SuperX's daily CSV. Only total traded
+      // Today's volume comes live from the PSX Data Portal through Scanify's
+      // own Cloudflare Worker (the Worker fetches dps.psx.com.pk server-side
+      // and re-serves it with CORS open; DPS blocks browser requests with a
+      // 403). The daily volume history and the 7-day average come from
+      // SuperX's daily CSV. DPS publishes exact volume but no per-symbol
+      // value-traded column, so value traded is volume x current close
+      // (approximate - labelled as such on the page). Only total traded
       // volume is published for PSX stocks, so this section shows totals only —
       // there is no split of the total into sides anywhere here.
       var volSym = "OGDC", volReq = 0, volSnapCache = null, volLastBars = null, volTimer = null;
@@ -1287,56 +1291,37 @@
         if (n >= 1000) { var k = n / 1000; return (k >= 100 ? String(Math.round(k)) : String(Math.round(k * 10) / 10)) + "K"; }
         return String(Math.round(n));
       }
-      function volFetchPage(start, end) {
-        var body = JSON.stringify({
-          symbols: { query: { types: ["stock"] }, tickers: [] },
-          columns: ["name", "volume", "Value.Traded"],
-          range: [start, end],
-          markets: ["pakistan"],
-          sort: { sortBy: "name", sortOrder: "asc" }
-        });
+      // Live snapshot from the PSX Data Portal, served by Scanify's own
+      // Cloudflare Worker. One GET returns the whole market: symbol ->
+      // { v, val, c }, where val is volume x current close (DPS publishes
+      // exact volume but no per-symbol value-traded column, so the value is
+      // derived and labelled approximate on the page). It feeds both the
+      // Today card and the Most Active list, and is cached for the session
+      // so repeat symbol checks do not refetch the market. Pass force to
+      // bypass the cache - the 30-second live refresh uses that.
+      var DPS_PROXY_URL = "https://scanify-dps.afrasiabdarson.workers.dev";
+      function volFetchSnapshot(force) {
+        if (!force && volSnapCache) return Promise.resolve(volSnapCache);
         var ctrl = ("AbortController" in window) ? new AbortController() : null;
         var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 25000) : null;
-        // The Pakistan market endpoint, not global/scan: both answer the same
-        // query, but global/scan converts Value.Traded to US dollars while this
-        // endpoint returns it in rupees, which is what the section displays.
-        return fetch("https://scanner.tradingview.com/pakistan/scan", {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=UTF-8" },
-          body: body,
+        return fetch(DPS_PROXY_URL, {
           signal: ctrl ? ctrl.signal : undefined
         }).then(function (r) {
           if (timer) clearTimeout(timer);
           if (!r.ok) throw new Error("HTTP " + r.status);
           return r.json();
-        }).catch(function (e) { if (timer) clearTimeout(timer); throw e; });
-      }
-      // One live snapshot of the whole universe: symbol -> { v, val }. It feeds
-      // both the Today card and the Most Active list, and is cached for the
-      // session so repeat symbol checks do not refetch the market. Pass force
-      // to bypass the cache — the 30-second live refresh uses that.
-      function volFetchSnapshot(force) {
-        if (!force && volSnapCache) return Promise.resolve(volSnapCache);
-        var PAGE = 400;
-        var map = {};
-        function add(rows) {
-          (rows || []).forEach(function (row) {
-            var sym = (row.s || "").split(":")[1];
-            if (!sym) return;
-            var d = row.d || [];
-            map[sym] = { s: sym, v: numOr(d[1], null), val: numOr(d[2], null) };
+        }).then(function (j) {
+          if (!j || !j.ok || (j.rows || []).length < 100) throw new Error("bad DPS snapshot");
+          var map = {};
+          j.rows.forEach(function (row) {
+            if (!row || !row.s) return;
+            var v = typeof row.v === "number" ? row.v : null;
+            var c = typeof row.c === "number" ? row.c : null;
+            map[row.s] = { s: row.s, v: v, val: (v !== null && c !== null) ? v * c : null, c: c };
           });
-        }
-        return volFetchPage(0, PAGE).then(function (first) {
-          add(first.data);
-          var total = first.totalCount || (first.data || []).length;
-          if (total <= PAGE) { volSnapCache = map; return map; }
-          return volFetchPage(PAGE, total + PAGE).then(function (rest) {
-            add(rest.data);
-            volSnapCache = map;
-            return map;
-          }).catch(function () { volSnapCache = map; return map; });
-        });
+          volSnapCache = map;
+          return map;
+        }).catch(function (e) { if (timer) clearTimeout(timer); throw e; });
       }
       function volRenderTop(map) {
         var rows = Object.keys(map).map(function (k) { return map[k]; })
