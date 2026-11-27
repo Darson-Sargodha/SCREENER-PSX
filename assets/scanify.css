@@ -563,7 +563,11 @@
       .ticker-track { display: inline-flex; white-space: nowrap; padding: 8px 0; animation: tickerMove 45s linear infinite; will-change: transform; }
       .ticker-track span { font-size: 13px; font-weight: 600; color: #fbbf24; }
       @keyframes tickerMove { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-      @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+      /* NOTE: do NOT gate this on prefers-reduced-motion. The user's desktop
+         has Windows animation effects off, so it reports reduce — and a
+         reduce rule here froze the ticker on PC while it scrolled fine on
+         his phone (same lesson as the hero logo + heading entrances). The
+         ticker must scroll on every screen. */
       /* Mobile: keep the page nav visible as a scrollable row under the brand
          (the single-page build hid it; a 5-page site needs it on phones too). */
       @media (max-width: 720px) {
